@@ -26,7 +26,7 @@ class ActorSpawner {
     final random = new math.Random();
     final entryPoint = entryPoints[random.nextInt(entryPoints.length)],
         exitPoint = exitPoints[random.nextInt(exitPoints.length)];
-    print('$entryPoint $exitPoint');
+
     return Actor(
         forType,
         resolveConnection(network, entryPoint, exitPoint, forType),

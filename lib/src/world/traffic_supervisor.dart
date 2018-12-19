@@ -40,40 +40,40 @@ class TrafficSupervisor {
         (Point point) => actor.state.map((state) => Tuple2(point, state));
     final toMappedActor = (Actor actor) => (Tuple2<Point, ActorState> tuple) =>
         MappedActor(actor, tuple.item1, tuple.item2);
-    final combiner = (Map<Actor, Point> snapshot, MappedActor mappedActor) =>
-        Tuple2(
-            mappedActor.actor,
-            Map<Actor, Point>.from(snapshot)
-              ..[mappedActor.actor] = mappedActor.point);
+    final onDestroy = (Actor actor) =>
+        actor.destroy.take(1).map((_) => MappedActor.asDeletion(actor));
+    final combiner = (Map<Actor, Point> snapshot, MappedActor mappedActor) {
+      final transformed = Map<Actor, Point>.from(snapshot);
+      final isDeletion = mappedActor.point == null;
+
+      if (isDeletion) {
+        transformed.remove(mappedActor.actor);
+      } else {
+        transformed[mappedActor.actor] = mappedActor.point;
+      }
+
+      return Tuple2(isDeletion ? null : mappedActor.actor, transformed);
+    };
     final handleSnapshot = (Tuple2<Actor, Map<Actor, Point>> tuple) {
-      final actorMap = <Actor, Point>{}, nextActorMap = <Actor, Point>{};
-      final nextState = tuple.item1.nextState;
-
-      tuple.item2.forEach((actor, point) {
-        if (actor.stateSync.isSameState(tuple.item1.stateSync)) {
-          actorMap[actor] = point;
-        } else if (nextState != null &&
-            actor.stateSync.isSameState(nextState)) {
-          nextActorMap[actor] = point;
-        }
-      });
-
       _onSnapshot.add(tuple.item2);
 
-      tuple.item1.onSnapshot.add(actorMap);
-      tuple.item1.onNextSnapshot.add(nextActorMap);
+      tuple.item1?.onSnapshot?.add(tuple.item2);
     };
+    final onNext = Observable(_onSpawner.stream)
+        .flatMap((spawner) => spawner.next)
+        .asBroadcastStream();
 
     Observable.zip2(
             _onSnapshot.stream,
-            Observable(_onSpawner.stream)
-                .flatMap((spawner) => spawner.next)
-                .flatMap((actor) => actor
-                    .sampledPosition(sampler)
-                    .exhaustMap(maybeSwitchConnection(actor))
-                    .switchMap(toPointAndState(actor))
-                    .map(toMappedActor(actor))
-                    .takeUntil(actor.destroy)),
+            Observable.merge([
+              onNext.flatMap((actor) => actor
+                  .sampledPosition(sampler)
+                  .exhaustMap(maybeSwitchConnection(actor))
+                  .switchMap(toPointAndState(actor))
+                  .map(toMappedActor(actor))
+                  .takeUntil(actor.destroy)),
+              onNext.flatMap(onDestroy)
+            ]),
             combiner)
         .listen(handleSnapshot);
   }
@@ -85,4 +85,6 @@ class MappedActor {
   final ActorState state;
 
   MappedActor(this.actor, this.point, this.state);
+
+  factory MappedActor.asDeletion(Actor actor) => MappedActor(actor, null, null);
 }

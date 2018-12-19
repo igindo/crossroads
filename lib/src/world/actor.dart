@@ -14,16 +14,13 @@ enum ActorType { car, bike, pedestrian }
 class Actor extends Object with ReactiveMixin {
   final BehaviorSubject<ActorState> _onState = BehaviorSubject<ActorState>();
   final BehaviorSubject<Map<Actor, Point>> _onSnapshot =
-          BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{}),
-      _onNextSnapshot =
-          BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
+      BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
   final StreamController<bool> _onDestroy = StreamController<bool>.broadcast();
   static const duration = const Duration(seconds: 1);
 
   StreamSubscription<void> _onSnapshotSubscription;
 
   Sink<Map<Actor, Point>> get onSnapshot => _onSnapshot.sink;
-  Sink<Map<Actor, Point>> get onNextSnapshot => _onNextSnapshot.sink;
 
   Stream<bool> get destroy => _onDestroy.stream;
 
@@ -57,9 +54,20 @@ class Actor extends Object with ReactiveMixin {
   Actor(this.type, this.path, this.start, this.end) {
     nextConnection(start);
 
-    _onSnapshotSubscription = _onSnapshot.stream
-        .asyncMap(_maybeSlowDown)
-        .listen(null);
+    final localize = (Map<Actor, Point> snapshot) {
+      final localMap = <Actor, Point>{};
+
+      snapshot.forEach((actor, point) {
+        if (actor._onState.value.isSameState(_onState.value)) {
+          localMap[actor] = point;
+        }
+      });
+
+      return localMap;
+    };
+
+    _onSnapshotSubscription =
+        _onSnapshot.stream.map(localize).asyncMap(_maybeSlowDown).listen(null);
   }
 
   void _destroy() {
@@ -69,7 +77,6 @@ class Actor extends Object with ReactiveMixin {
 
     _onState.close();
     _onSnapshot.close();
-    _onNextSnapshot.close();
     _onDestroy.close();
 
     _onSnapshotSubscription?.cancel();
@@ -147,7 +154,22 @@ class Actor extends Object with ReactiveMixin {
     final dy = connection.totalDistance(direction);
     final startPoint = connection.resolveStart(direction);
 
-    return _onNextSnapshot.stream
+    final localizeOnNext = (Map<Actor, Point> snapshot) {
+      final localMap = <Actor, Point>{};
+
+      if (nextState != null) {
+        snapshot.forEach((actor, point) {
+          if (actor.stateSync.isSameState(nextState)) {
+            localMap[actor] = point;
+          }
+        });
+      }
+
+      return localMap;
+    };
+
+    return _onSnapshot.stream
+        .map(localizeOnNext)
         .map((snapshot) => snapshot.values.fold(dy, (double prev, next) {
               final d = startPoint.distanceTo(next);
 
