@@ -21,44 +21,47 @@ void main() {
     setUp(() {
       network = Network([
         createConnection(
-            const Point(0, 0), const Point(10, 0), Direction.start_to_end),
+            const Point(0, 0), const Point(100, 0), Direction.start_to_end),
         createConnection(
-            const Point(10, 0), const Point(20, 0), Direction.start_to_end),
+            const Point(100, 0), const Point(0, 0), Direction.start_to_end),
         createConnection(
-            const Point(20, 0), const Point(30, 0), Direction.start_to_end),
+            const Point(100, 0), const Point(200, 0), Direction.start_to_end),
         createConnection(
-            const Point(30, 0), const Point(40, 0), Direction.start_to_end),
+            const Point(200, 0), const Point(300, 0), Direction.start_to_end),
         createConnection(
-            const Point(0, 0), const Point(0, 10), Direction.start_to_end),
+            const Point(300, 0), const Point(400, 0), Direction.start_to_end),
         createConnection(
-            const Point(10, 0), const Point(10, 10), Direction.start_to_end),
+            const Point(0, 0), const Point(0, 100), Direction.start_to_end),
         createConnection(
-            const Point(20, 0), const Point(20, 10), Direction.start_to_end),
+            const Point(100, 0), const Point(100, 100), Direction.start_to_end),
         createConnection(
-            const Point(30, 0), const Point(30, 10), Direction.start_to_end),
+            const Point(200, 0), const Point(200, 100), Direction.start_to_end),
         createConnection(
-            const Point(40, 0), const Point(40, 10), Direction.start_to_end),
+            const Point(300, 0), const Point(300, 100), Direction.start_to_end),
+        createConnection(
+            const Point(400, 0), const Point(400, 100), Direction.start_to_end),
       ]);
 
-      spawner = new ActorSpawner(
-          network, ActorType.car, const Point(10, 0), const [Point(40, 10)]);
+      spawner = new ActorSpawner(network, ActorType.car, const [
+        Point(0, 0),
+        Point(100, 0),
+        Point(200, 0),
+        Point(300, 0),
+        Point(400, 0)
+      ], const [
+        Point(0, 100),
+        Point(100, 100),
+        Point(200, 100),
+        Point(300, 100),
+        Point(400, 100)
+      ]);
 
       supervisor = new TrafficSupervisor()..onSpawner.add(spawner);
     });
 
     test('empty grid is inaccessible', () async {
-      print(resolveConnection(
-              network, const Point(10, 0), const Point(40, 10), ActorType.car)
-          .map((connection) =>
-              'from: (x: ${connection.start.x}, y: ${connection.start.y}), to: (x: ${connection.end.x}, y: ${connection.end.y})'));
-
-      supervisor.snapshot.listen((data) => print(data));
-
       await expectLater(
-          supervisor.snapshot
-              .doOnData((data) => print(data))
-              .where((data) => data == null),
-          emitsDone);
+          supervisor.snapshot.where((data) => data == null), emitsDone);
     });
   });
 }

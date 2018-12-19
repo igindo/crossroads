@@ -13,7 +13,7 @@ class TrafficSupervisor {
   final StreamController<ActorSpawner> _onSpawner =
       StreamController<ActorSpawner>();
   final Stream<void> sampler =
-      Stream.periodic(const Duration(milliseconds: 20), (_) => null)
+      Stream.periodic(const Duration(milliseconds: 30), (_) => null)
           .asBroadcastStream();
 
   Sink<ActorSpawner> get onSpawner => _onSpawner.sink;
@@ -25,7 +25,7 @@ class TrafficSupervisor {
   }
 
   void _init() {
-    final maybeSwitchConnection = (Actor actor) => (Point point) async {
+    final maybeSwitchConnection = (Actor actor) => (Point point) async* {
           final state = await actor.state.first,
               connection = state.connection,
               direction = state.direction;
@@ -34,7 +34,7 @@ class TrafficSupervisor {
             await actor.nextConnection(connection.resolveEnd(direction));
           }
 
-          return point;
+          yield point;
         };
     final toPointAndState = (Actor actor) =>
         (Point point) => actor.state.map((state) => Tuple2(point, state));
@@ -70,9 +70,10 @@ class TrafficSupervisor {
                 .flatMap((spawner) => spawner.next)
                 .flatMap((actor) => actor
                     .sampledPosition(sampler)
-                    .asyncMap(maybeSwitchConnection(actor))
+                    .exhaustMap(maybeSwitchConnection(actor))
                     .switchMap(toPointAndState(actor))
-                    .map(toMappedActor(actor))),
+                    .map(toMappedActor(actor))
+                    .takeUntil(actor.destroy)),
             combiner)
         .listen(handleSnapshot);
   }

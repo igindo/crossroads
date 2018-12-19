@@ -17,10 +17,15 @@ class Actor extends Object with ReactiveMixin {
           BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{}),
       _onNextSnapshot =
           BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
+  final StreamController<bool> _onDestroy = StreamController<bool>.broadcast();
   static const duration = const Duration(seconds: 1);
+
+  StreamSubscription<void> _onSnapshotSubscription;
 
   Sink<Map<Actor, Point>> get onSnapshot => _onSnapshot.sink;
   Sink<Map<Actor, Point>> get onNextSnapshot => _onNextSnapshot.sink;
+
+  Stream<bool> get destroy => _onDestroy.stream;
 
   Observable<ActorState> get state => _onState.stream;
 
@@ -30,6 +35,7 @@ class Actor extends Object with ReactiveMixin {
   final Iterable<Connection> path;
   final Point start, end;
 
+  bool isDestroyed = false;
   int _currentPathIndex = 0;
 
   ActorState get nextState {
@@ -51,14 +57,29 @@ class Actor extends Object with ReactiveMixin {
   Actor(this.type, this.path, this.start, this.end) {
     nextConnection(start);
 
-    _onSnapshot.stream.asyncMap(_maybeSlowDown).listen(null);
+    _onSnapshotSubscription = _onSnapshot.stream
+        .asyncMap(_maybeSlowDown)
+        .listen(null);
+  }
+
+  void _destroy() {
+    isDestroyed = true;
+
+    _onDestroy.add(true);
+
+    _onState.close();
+    _onSnapshot.close();
+    _onNextSnapshot.close();
+    _onDestroy.close();
+
+    _onSnapshotSubscription?.cancel();
   }
 
   Future<dynamic> nextConnection(Point entryPoint) async {
     if (_currentPathIndex == path.length) {
       onLinearModifiers.add(const <Vector>[]);
 
-      return await _onState.close();
+      return _destroy();
     }
 
     if (_currentPathIndex > 0) {

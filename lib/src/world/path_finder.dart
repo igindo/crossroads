@@ -12,6 +12,9 @@ Iterable<Connection> resolveConnection(final Network network, final Point start,
 
   List<Connection> toConnections(final List<Point> points) {
     final len = points.length;
+
+    if (len == 0) return const <Connection>[];
+
     final connections = List<Connection>(len - 1);
 
     bool Function(Connection) isConnection(final Point p1, final Point p2) =>

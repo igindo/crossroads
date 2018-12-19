@@ -25,9 +25,15 @@ void main() {
     createConnection(
         const Point(100, 0), const Point(200, 0), Direction.start_to_end),
     createConnection(
+        const Point(200, 0), const Point(100, 0), Direction.start_to_end),
+    createConnection(
         const Point(200, 0), const Point(300, 0), Direction.start_to_end),
     createConnection(
+        const Point(300, 0), const Point(200, 0), Direction.start_to_end),
+    createConnection(
         const Point(300, 0), const Point(400, 0), Direction.start_to_end),
+    createConnection(
+        const Point(400, 0), const Point(300, 0), Direction.start_to_end),
     createConnection(
         const Point(0, 0), const Point(0, 100), Direction.start_to_end),
     createConnection(
@@ -40,8 +46,13 @@ void main() {
         const Point(400, 0), const Point(400, 100), Direction.start_to_end),
   ]);
 
-  final spawner =
-      new ActorSpawner(network, ActorType.car, const Point(100, 0), const [
+  final spawner = new ActorSpawner(network, ActorType.car, const [
+    Point(0, 0),
+    Point(100, 0),
+    Point(200, 0),
+    Point(300, 0),
+    Point(400, 0)
+  ], const [
     Point(0, 100),
     Point(100, 100),
     Point(200, 100),
