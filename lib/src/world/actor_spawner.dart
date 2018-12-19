@@ -11,7 +11,8 @@ import 'package:crossroads/src/world/point.dart';
 class ActorSpawner {
   final Network network;
   final ActorType forType;
-  final List<Point> entryPoints, exitPoints;
+  final Point entryPoint;
+  final List<Point> exitPoints;
   final StreamController<bool> _onClose = new StreamController<bool>();
 
   Observable<Actor> _next;
@@ -20,12 +21,11 @@ class ActorSpawner {
           .takeUntil(_onClose.stream)
           .map(nextActor);
 
-  ActorSpawner(this.network, this.forType, this.entryPoints, this.exitPoints);
+  ActorSpawner(this.network, this.forType, this.entryPoint, this.exitPoints);
 
   Actor nextActor(final _) {
     final random = new math.Random();
-    final entryPoint = entryPoints[random.nextInt(entryPoints.length)],
-        exitPoint = exitPoints[random.nextInt(exitPoints.length)];
+    final exitPoint = exitPoints[random.nextInt(exitPoints.length)];
 
     return Actor(
         forType,

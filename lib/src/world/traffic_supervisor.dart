@@ -10,13 +10,13 @@ import 'package:crossroads/src/world/point.dart';
 class TrafficSupervisor {
   final BehaviorSubject<Map<Actor, Point>> _onSnapshot =
       BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
-  final StreamController<ActorSpawner> _onSpawner =
-      StreamController<ActorSpawner>();
+  final StreamController<List<ActorSpawner>> _onSpawners =
+      StreamController<List<ActorSpawner>>();
   final Stream<void> sampler =
       Stream.periodic(const Duration(milliseconds: 30), (_) => null)
           .asBroadcastStream();
 
-  Sink<ActorSpawner> get onSpawner => _onSpawner.sink;
+  Sink<List<ActorSpawner>> get onSpawners => _onSpawners.sink;
 
   Observable<Map<Actor, Point>> get snapshot => _onSnapshot.stream;
 
@@ -59,7 +59,8 @@ class TrafficSupervisor {
 
       tuple.item1?.onSnapshot?.add(tuple.item2);
     };
-    final onNext = Observable(_onSpawner.stream)
+    final onNext = Observable(_onSpawners.stream)
+        .expand((spawners) => spawners)
         .flatMap((spawner) => spawner.next)
         .asBroadcastStream();
 
