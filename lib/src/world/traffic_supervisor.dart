@@ -5,6 +5,7 @@ import 'package:tuple/tuple.dart';
 
 import 'package:crossroads/src/world/actor.dart';
 import 'package:crossroads/src/world/actor_spawner.dart';
+import 'package:crossroads/src/world/connection.dart';
 import 'package:crossroads/src/world/point.dart';
 
 class TrafficSupervisor {
@@ -36,10 +37,8 @@ class TrafficSupervisor {
 
           yield point;
         };
-    final toPointAndState = (Actor actor) =>
-        (Point point) => actor.state.map((state) => Tuple2(point, state));
-    final toMappedActor = (Actor actor) => (Tuple2<Point, ActorState> tuple) =>
-        MappedActor(actor, tuple.item1, tuple.item2);
+    final toMappedActor =
+        (Actor actor) => (Point point) => MappedActor(actor, point);
     final onDestroy = (Actor actor) =>
         actor.destroy.take(1).map((_) => MappedActor.asDeletion(actor));
     final combiner = (Map<Actor, Point> snapshot, MappedActor mappedActor) {
@@ -49,7 +48,14 @@ class TrafficSupervisor {
       if (isDeletion) {
         transformed.remove(mappedActor.actor);
       } else {
+        final isCongested = mappedActor.actor.stateSync.connection.start
+                .distanceTo(mappedActor.point) <
+            10;
         transformed[mappedActor.actor] = mappedActor.point;
+
+        mappedActor.actor.stateSync.connection.onCongested.add(isCongested
+            ? CongestionState(mappedActor.actor, true)
+            : const CongestionState(null, false));
       }
 
       return Tuple2(isDeletion ? null : mappedActor.actor, transformed);
@@ -70,7 +76,6 @@ class TrafficSupervisor {
               onNext.flatMap((actor) => actor
                   .sampledPosition(sampler)
                   .exhaustMap(maybeSwitchConnection(actor))
-                  .switchMap(toPointAndState(actor))
                   .map(toMappedActor(actor))
                   .takeUntil(actor.destroy)),
               onNext.flatMap(onDestroy)
@@ -83,9 +88,8 @@ class TrafficSupervisor {
 class MappedActor {
   final Actor actor;
   final Point point;
-  final ActorState state;
 
-  MappedActor(this.actor, this.point, this.state);
+  MappedActor(this.actor, this.point);
 
-  factory MappedActor.asDeletion(Actor actor) => MappedActor(actor, null, null);
+  factory MappedActor.asDeletion(Actor actor) => MappedActor(actor, null);
 }

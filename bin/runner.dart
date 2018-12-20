@@ -1,11 +1,8 @@
-import 'dart:html';
-import 'dart:math' as math;
-
 import 'package:crossroads/crossroads.dart';
 
 void main() {
-  final CanvasElement canvas = querySelector('#canvas');
-
+  Network network;
+  TrafficSupervisor supervisor;
   final scheduler = StoplightScheduler([
     const Duration(seconds: 8),
     const Duration(seconds: 2),
@@ -47,17 +44,44 @@ void main() {
           c1234[3], const Point(243, 285), Direction.start_to_end),
       l4 = createConnection(
           const Point(225, 290), c1234[0], Direction.start_to_end),
-      r1_l3 = createConnection(r1.end, l3.start, Direction.start_to_end, accepts: {r1: [Stoplight(scheduler, (i) => i == 0)]}),
-      r1_r4 = createConnection(r1.end, r4.start, Direction.start_to_end, accepts: {r1: [Stoplight(scheduler, (i) => i == 0)]}),
-      r2_l1 = createConnection(r2.end, l1.start, Direction.start_to_end, accepts: {r2: [Stoplight(scheduler, (i) => i == 2)]}),
-      r2_r4 = createConnection(r2.end, r4.start, Direction.start_to_end, accepts: {r2: [Stoplight(scheduler, (i) => i == 2)]}),
-      r3_l1 = createConnection(r3.end, l1.start, Direction.start_to_end, accepts: {r3: [Stoplight(scheduler, (i) => i == 0)]}),
-      r3_l2 = createConnection(r3.end, l2.start, Direction.start_to_end, accepts: {r3: [Stoplight(scheduler, (i) => i == 0)]}),
-      r3_r4 = createConnection(r3.end, r4.start, Direction.start_to_end, accepts: {r3: [Stoplight(scheduler, (i) => i == 0)]}),
-      l4_l2 = createConnection(l4.end, l2.start, Direction.start_to_end, accepts: {l4: [Stoplight(scheduler, (i) => i == 2)]}),
-      l4_l3 = createConnection(l4.end, l3.start, Direction.start_to_end, accepts: {l4: [Stoplight(scheduler, (i) => i == 2)]});
+      r1_l3 =
+          createConnection(r1.end, l3.start, Direction.start_to_end, accepts: {
+    r1: [Stoplight(scheduler, (i) => i == 0)]
+  }),
+      r1_r4 =
+          createConnection(r1.end, r4.start, Direction.start_to_end, accepts: {
+    r1: [Stoplight(scheduler, (i) => i == 0)]
+  }),
+      r2_l1 =
+          createConnection(r2.end, l1.start, Direction.start_to_end, accepts: {
+    r2: [Stoplight(scheduler, (i) => i == 2)]
+  }),
+      r2_r4 =
+          createConnection(r2.end, r4.start, Direction.start_to_end, accepts: {
+    r2: [Stoplight(scheduler, (i) => i == 2)]
+  }),
+      r3_l1 =
+          createConnection(r3.end, l1.start, Direction.start_to_end, accepts: {
+    r3: [Stoplight(scheduler, (i) => i == 0)]
+  }),
+      r3_l2 =
+          createConnection(r3.end, l2.start, Direction.start_to_end, accepts: {
+    r3: [Stoplight(scheduler, (i) => i == 0)]
+  }),
+      r3_r4 =
+          createConnection(r3.end, r4.start, Direction.start_to_end, accepts: {
+    r3: [Stoplight(scheduler, (i) => i == 0)]
+  }),
+      l4_l2 =
+          createConnection(l4.end, l2.start, Direction.start_to_end, accepts: {
+    l4: [Stoplight(scheduler, (i) => i == 2)]
+  }),
+      l4_l3 =
+          createConnection(l4.end, l3.start, Direction.start_to_end, accepts: {
+    l4: [Stoplight(scheduler, (i) => i == 2)]
+  });
 
-  final network = Network([
+  network = Network([
     r1,
     l1,
     r2,
@@ -79,7 +103,7 @@ void main() {
     l4_l3
   ]);
 
-  final supervisor = new TrafficSupervisor();
+  supervisor = new TrafficSupervisor();
 
   supervisor.onSpawners.add([
     ActorSpawner(network, ActorType.car, r1.start, [l2_1.end, l3.end, r4.end]),
@@ -88,23 +112,7 @@ void main() {
     ActorSpawner(network, ActorType.car, l4.start, [l1.end, l2_1.end, l3.end])
   ]);
 
-  supervisor.snapshot.listen((snapshot) {
-    final CanvasRenderingContext2D context = canvas.getContext('2d');
-
-    context.clearRect(0, 0, 800, 665);
-
-    snapshot.forEach((actor, point) {
-      context.beginPath();
-      context.arc(point.x, point.y, 4, 0, 2 * math.pi);
-      context.fillStyle = actor.hashCode % 3 == 0
-          ? 'green'
-          : actor.hashCode % 3 == 1
-              ? 'red'
-              : actor.hashCode % 3 == 2 ? 'blue' : 'black';
-      context.fill();
-      context.lineWidth = 1;
-      context.strokeStyle = 'white';
-      context.stroke();
-    });
+  supervisor.snapshot.throttle(const Duration(seconds: 1)).listen((snapshot) {
+    print('${snapshot.keys.length} actors');
   });
 }

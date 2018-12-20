@@ -18,6 +18,7 @@ class Actor extends Object with ReactiveMixin {
   final StreamController<bool> _onDestroy = StreamController<bool>.broadcast();
 
   StreamSubscription<void> _onSnapshotSubscription;
+  StreamSubscription<bool> _onSwitchSubscription;
 
   Sink<Map<Actor, Point>> get onSnapshot => _onSnapshot.sink;
 
@@ -80,6 +81,7 @@ class Actor extends Object with ReactiveMixin {
     _onDestroy.close();
 
     _onSnapshotSubscription?.cancel();
+    _onSwitchSubscription?.cancel();
   }
 
   Future<dynamic> nextConnection(Point entryPoint) async {
@@ -103,7 +105,7 @@ class Actor extends Object with ReactiveMixin {
 
     onLinearModifiers.add([
       Vector(exitPoint.x - entryPoint.x, exitPoint.y - entryPoint.y,
-          Duration(milliseconds: (10 * connection.totalDistance()).floor()))
+          Duration(milliseconds: (15 * connection.totalDistance()).floor()))
     ]);
 
     _onState.add(ActorState(connection, direction));
@@ -129,7 +131,9 @@ class Actor extends Object with ReactiveMixin {
     }
 
     final streams = [
-      _congestion(nextConnection, direction),
+      nextConnection.congested
+          .where((state) => !state.isCongested || state.actor != this)
+          .map((_) => true),
       Observable.just(true)
     ];
 
@@ -138,63 +142,17 @@ class Actor extends Object with ReactiveMixin {
     }
 
     final stream = streams.length == 2
-        ? streams.first.doOnData((_) {
-            if (_print) print(_);
-          })
-        : Observable.combineLatest(streams, (List<bool> values) {
-            if (_print) print(values);
-            return values.every((value) => value);
-          });
+        ? streams.first
+        : Observable.combineLatest(
+            streams, (List<bool> values) => values.every((value) => value));
 
-    return stream
-        .takeUntil(_onDestroy.stream)
-        .where(test)
-        .timeout(const Duration(seconds: 10), onTimeout: (_) {
-      if (!isDestroyed) {
-        //print('timeout: ${nextConnection == stateSync.connection}');
+    final completer = Completer<bool>();
 
-        _print = true;
-      }
-    }).first;
-  }
+    _onSwitchSubscription = Observable.race(
+            [_onDestroy.stream.map((_) => false), stream..where(test).take(1)])
+        .listen(completer.complete);
 
-  bool _print = false;
-
-  Observable<bool> _congestion(Connection connection, Direction direction) {
-    final nextState = this.nextState;
-
-    if (nextState == null) return Observable.just(true);
-
-    final dy = connection.totalDistance();
-    final startPoint = connection.resolveStart(direction);
-
-    final localizeOnNext = (Map<Actor, Point> snapshot) {
-      final localMap = <Actor, Point>{};
-
-      snapshot.forEach((actor, point) {
-        if (actor != this &&
-            !actor.isDestroyed &&
-            actor.stateSync.isSameState(nextState)) {
-          localMap[actor] = point;
-        }
-      });
-
-      return localMap;
-    };
-
-    return _onSnapshot.stream
-        .doOnData((_) {
-          if (_print) print('${_.hashCode} ${_.length}');
-        })
-        .map(localizeOnNext)
-        .map((snapshot) => snapshot.values.fold(dy, (double prev, next) {
-              final d = startPoint.distanceTo(next);
-
-              if (d < prev) return d;
-
-              return prev;
-            }))
-        .map((dist) => dist >= 10);
+    return completer.future;
   }
 
   Future<void> _maybeSlowDown(Map<Actor, Point> snapshot) async {
@@ -243,13 +201,7 @@ class Actor extends Object with ReactiveMixin {
               ? endPoint.y - startPoint.y
               : obstruction.y - point.y;
 
-      onLinearModifiers.add([
-        Vector(
-            dx,
-            dy,
-            Duration(
-                milliseconds: 1000))
-      ]);
+      onLinearModifiers.add([Vector(dx, dy, Duration(milliseconds: 1500))]);
     }
 
     void applyNormal() {
@@ -260,7 +212,7 @@ class Actor extends Object with ReactiveMixin {
             endPoint.x - startPoint.x,
             endPoint.y - startPoint.y,
             Duration(
-                milliseconds: (10 * state.connection.totalDistance()).floor()))
+                milliseconds: (15 * state.connection.totalDistance()).floor()))
       ]);
     }
 
