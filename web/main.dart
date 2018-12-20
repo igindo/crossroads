@@ -10,6 +10,8 @@ void main() {
     const Duration(seconds: 8),
     const Duration(seconds: 2),
     const Duration(seconds: 8),
+    const Duration(seconds: 2),
+    const Duration(seconds: 8),
     const Duration(seconds: 2)
   ]);
 

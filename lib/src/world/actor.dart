@@ -52,23 +52,30 @@ class Actor extends Object with ReactiveMixin {
   }
 
   Actor(this.type, this.path, this.start, this.end) {
-    nextConnection(start);
+    path.first.congested
+        .where((state) => !state.isCongested)
+        .first
+        .whenComplete(() {
+      nextConnection(start);
 
-    final localize = (Map<Actor, Point> snapshot) {
-      final localMap = <Actor, Point>{};
+      final localize = (Map<Actor, Point> snapshot) {
+        final localMap = <Actor, Point>{};
 
-      snapshot.forEach((actor, point) {
-        if (!actor.isDestroyed &&
-            actor._onState.value.isSameState(_onState.value)) {
-          localMap[actor] = point;
-        }
-      });
+        snapshot.forEach((actor, point) {
+          if (!actor.isDestroyed &&
+              actor._onState.value.isSameState(_onState.value)) {
+            localMap[actor] = point;
+          }
+        });
 
-      return localMap;
-    };
+        return localMap;
+      };
 
-    _onSnapshotSubscription =
-        _onSnapshot.stream.map(localize).asyncMap(_maybeSlowDown).listen(null);
+      _onSnapshotSubscription = _onSnapshot.stream
+          .map(localize)
+          .asyncMap(_maybeSlowDown)
+          .listen(null);
+    });
   }
 
   void _destroy() {
