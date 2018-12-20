@@ -19,8 +19,7 @@ List<Connection> resolveConnection(final Network network, final Point start,
 
     bool Function(Connection) isConnection(final Point p1, final Point p2) =>
         (Connection connection) =>
-            connection.start == p1 && connection.end == p2 ||
-            connection.start == p2 && connection.end == p1;
+            connection.start == p1 && connection.end == p2;
 
     for (var i = 1; i < len; i++) {
       final p1 = points[i - 1], p2 = points[i];

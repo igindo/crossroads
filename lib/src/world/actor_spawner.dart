@@ -17,7 +17,7 @@ class ActorSpawner {
 
   Observable<Actor> _next;
   Observable<Actor> get next =>
-      _next ??= Observable.periodic(const Duration(milliseconds: 750))
+      _next ??= Observable(randInterval())
           .takeUntil(_onClose.stream)
           .map(nextActor);
 
@@ -38,5 +38,10 @@ class ActorSpawner {
     _onClose.add(true);
 
     _onClose.close();
+  }
+
+  Stream<bool> randInterval() async* {
+    yield await Future.delayed(Duration(milliseconds: math.Random().nextInt(500) + 500), () => true);
+    yield* randInterval();
   }
 }

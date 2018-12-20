@@ -39,26 +39,16 @@ class Connection {
 
   bool resolveIsAtEnd(Point point, Direction direction) =>
       (direction == Direction.start_to_end ? point == end : point == start) ||
-      resolveStart(direction).distanceTo(point) > totalDistance(direction);
+      resolveStart(direction).distanceTo(point) > totalDistance();
 
-  double totalDistance(Direction direction) =>
-      direction == Direction.start_to_end
-          ? start.distanceTo(end)
-          : end.distanceTo(start);
+  double totalDistance() => start.distanceTo(end);
 }
 
 class ConnectionConfig {
   final ActorType type;
   final Direction direction;
-  final List<ConnectionLane> lanes;
+  final Map<Connection, List<TrafficSign>> accepts;
   final Speed speed;
 
-  const ConnectionConfig(this.type, this.direction, this.lanes, this.speed);
-}
-
-class ConnectionLane {
-  final List<Connection> adjacentConnections;
-  final List<TrafficSign> signs;
-
-  const ConnectionLane(this.adjacentConnections, this.signs);
+  const ConnectionConfig(this.type, this.direction, this.accepts, this.speed);
 }

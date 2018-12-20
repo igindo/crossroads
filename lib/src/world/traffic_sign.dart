@@ -10,19 +10,12 @@ class Stoplight implements TrafficSign {
 
   final BehaviorSubject<bool> _onCanDriveBy = BehaviorSubject<bool>();
 
-  Observable<bool> _canDriveBy;
   @override
-  Observable<bool> get canDriveBy {
-    if (_canDriveBy == null) {
-      scheduler.interval.map(onSchedule).listen(_onCanDriveBy.add);
+  Observable<bool> get canDriveBy => _onCanDriveBy.stream;
 
-      _canDriveBy = _onCanDriveBy.stream;
-    }
-
-    return _canDriveBy;
+  Stoplight(this.scheduler, this.onSchedule) {
+    scheduler.interval.map(onSchedule).listen(_onCanDriveBy.add);
   }
-
-  Stoplight(this.scheduler, this.onSchedule);
 }
 
 class StoplightScheduler {
@@ -38,7 +31,7 @@ class StoplightScheduler {
 
   Stream<int> _asStream() async* {
     for (var i = 0, len = intervals.length; i < len; i++) {
-      yield i;print(i);
+      yield i;
 
       await Future.delayed(intervals[i]);
     }

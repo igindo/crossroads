@@ -10,14 +10,14 @@ void main() {
       const Duration(seconds: 1)
     ]);
 
-    Connection createConnection(Point p1, Point p2, Direction direction) =>
+    Connection createConnection(Point p1, Point p2, Direction direction, int invertLights) =>
         Connection(p1, p2, [
           ConnectionConfig(
               ActorType.car,
               direction,
               [
                 ConnectionLane(
-                    null, [Stoplight(scheduler, (int index) => index % 2 == 0)])
+                    null, [Stoplight(scheduler, (int index) => index % 2 == invertLights)])
               ],
               Speed.undivided)
         ]);

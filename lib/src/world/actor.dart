@@ -16,7 +16,6 @@ class Actor extends Object with ReactiveMixin {
   final BehaviorSubject<Map<Actor, Point>> _onSnapshot =
       BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
   final StreamController<bool> _onDestroy = StreamController<bool>.broadcast();
-  static const duration = const Duration(seconds: 1);
 
   StreamSubscription<void> _onSnapshotSubscription;
 
@@ -58,7 +57,8 @@ class Actor extends Object with ReactiveMixin {
       final localMap = <Actor, Point>{};
 
       snapshot.forEach((actor, point) {
-        if (actor._onState.value.isSameState(_onState.value)) {
+        if (!actor.isDestroyed &&
+            actor._onState.value.isSameState(_onState.value)) {
           localMap[actor] = point;
         }
       });
@@ -102,7 +102,8 @@ class Actor extends Object with ReactiveMixin {
     setPoint(entryPoint);
 
     onLinearModifiers.add([
-      Vector(exitPoint.x - entryPoint.x, exitPoint.y - entryPoint.y, duration)
+      Vector(exitPoint.x - entryPoint.x, exitPoint.y - entryPoint.y,
+          Duration(milliseconds: (10 * connection.totalDistance()).floor()))
     ]);
 
     _onState.add(ActorState(connection, direction));
@@ -121,17 +122,9 @@ class Actor extends Object with ReactiveMixin {
       final config = nextConnection.configs[i];
 
       if (config.direction == direction) {
-        for (var j = 0, len2 = config.lanes.length; j < len2; j++) {
-          final lane = config.lanes[j];
+        signs = config.accepts[stateSync.connection];
 
-          if (true || lane.adjacentConnections.contains(nextConnection)) {
-            signs = lane.signs;
-
-            break;
-          }
-        }
-
-        if (signs != null) break;
+        break;
       }
     }
 
@@ -144,33 +137,55 @@ class Actor extends Object with ReactiveMixin {
       streams.addAll(signs.map((sign) => sign.canDriveBy));
     }
 
-    return Observable.combineLatest(
-            streams,
-            (List<bool> values) =>
-                values.fold(true, (bool prev, value) => prev && value))
+    final stream = streams.length == 2
+        ? streams.first.doOnData((_) {
+            if (_print) print(_);
+          })
+        : Observable.combineLatest(streams, (List<bool> values) {
+            if (_print) print(values);
+            return values.every((value) => value);
+          });
+
+    return stream
+        .takeUntil(_onDestroy.stream)
         .where(test)
-        .first;
+        .timeout(const Duration(seconds: 10), onTimeout: (_) {
+      if (!isDestroyed) {
+        //print('timeout: ${nextConnection == stateSync.connection}');
+
+        _print = true;
+      }
+    }).first;
   }
 
+  bool _print = false;
+
   Observable<bool> _congestion(Connection connection, Direction direction) {
-    final dy = connection.totalDistance(direction);
+    final nextState = this.nextState;
+
+    if (nextState == null) return Observable.just(true);
+
+    final dy = connection.totalDistance();
     final startPoint = connection.resolveStart(direction);
 
     final localizeOnNext = (Map<Actor, Point> snapshot) {
       final localMap = <Actor, Point>{};
 
-      if (nextState != null) {
-        snapshot.forEach((actor, point) {
-          if (actor.stateSync.isSameState(nextState)) {
-            localMap[actor] = point;
-          }
-        });
-      }
+      snapshot.forEach((actor, point) {
+        if (actor != this &&
+            !actor.isDestroyed &&
+            actor.stateSync.isSameState(nextState)) {
+          localMap[actor] = point;
+        }
+      });
 
       return localMap;
     };
 
     return _onSnapshot.stream
+        .doOnData((_) {
+          if (_print) print('${_.hashCode} ${_.length}');
+        })
         .map(localizeOnNext)
         .map((snapshot) => snapshot.values.fold(dy, (double prev, next) {
               final d = startPoint.distanceTo(next);
@@ -206,7 +221,9 @@ class Actor extends Object with ReactiveMixin {
       }
     });
 
-    if (obstruction == null && _currentPathIndex < path.length) {
+    if (nextState != null &&
+        obstruction == null &&
+        _currentPathIndex < path.length) {
       final canDriveBy = await _canSwitchConnection(endPoint, (_) => true);
 
       if (!canDriveBy) {
@@ -226,14 +243,24 @@ class Actor extends Object with ReactiveMixin {
               ? endPoint.y - startPoint.y
               : obstruction.y - point.y;
 
-      onLinearModifiers.add([Vector(dx, dy, duration)]);
+      onLinearModifiers.add([
+        Vector(
+            dx,
+            dy,
+            Duration(
+                milliseconds: 1000))
+      ]);
     }
 
     void applyNormal() {
       final startPoint = state.connection.resolveStart(state.direction);
 
       onLinearModifiers.add([
-        Vector(endPoint.x - startPoint.x, endPoint.y - startPoint.y, duration)
+        Vector(
+            endPoint.x - startPoint.x,
+            endPoint.y - startPoint.y,
+            Duration(
+                milliseconds: (10 * state.connection.totalDistance()).floor()))
       ]);
     }
 
