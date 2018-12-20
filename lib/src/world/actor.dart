@@ -149,7 +149,8 @@ class Actor extends Object with ReactiveMixin {
     final completer = Completer<bool>();
 
     _onSwitchSubscription = Observable.race(
-            [_onDestroy.stream.map((_) => false), stream..where(test).take(1)])
+            [_onDestroy.stream.map((_) => false), stream.where(test)])
+        .take(1)
         .listen(completer.complete);
 
     return completer.future;
