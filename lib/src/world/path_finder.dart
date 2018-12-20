@@ -6,7 +6,7 @@ import 'package:crossroads/src/world/connection.dart';
 import 'package:crossroads/src/world/network.dart';
 import 'package:crossroads/src/world/point.dart';
 
-Iterable<Connection> resolveConnection(final Network network, final Point start,
+List<Connection> resolveConnection(final Network network, final Point start,
     final Point end, final ActorType type) {
   final points = _resolvePoints(network, start, end, type);
 

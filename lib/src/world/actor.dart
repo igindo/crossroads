@@ -29,7 +29,7 @@ class Actor extends Object with ReactiveMixin {
   ActorState get stateSync => _onState.value;
 
   final ActorType type;
-  final Iterable<Connection> path;
+  final List<Connection> path;
   final Point start, end;
 
   bool isDestroyed = false;
@@ -37,7 +37,7 @@ class Actor extends Object with ReactiveMixin {
 
   ActorState get nextState {
     if (_currentPathIndex < path.length) {
-      final connection = path.elementAt(_currentPathIndex);
+      final connection = path[_currentPathIndex];
       final isConnectionInverted =
           _onState.value.connection.resolveEnd(_onState.value.direction) ==
               connection.end;
@@ -93,7 +93,7 @@ class Actor extends Object with ReactiveMixin {
       await _canSwitchConnection(entryPoint, (bool value) => value);
     }
 
-    final connection = path.elementAt(_currentPathIndex++);
+    final connection = path[_currentPathIndex++];
     final isConnectionInverted = entryPoint == connection.end;
     final direction =
         isConnectionInverted ? Direction.end_to_start : Direction.start_to_end;
@@ -111,7 +111,7 @@ class Actor extends Object with ReactiveMixin {
   Future<bool> _canSwitchConnection(Point entryPoint, bool test(bool value)) {
     //todo: based on rules, change connection when allowed
     //todo: connection saturation should be a dynamic traffic sign
-    final nextConnection = path.elementAt(_currentPathIndex);
+    final nextConnection = path[_currentPathIndex];
     final isConnectionInverted = entryPoint == nextConnection.end;
     final direction =
         isConnectionInverted ? Direction.end_to_start : Direction.start_to_end;
@@ -135,19 +135,21 @@ class Actor extends Object with ReactiveMixin {
       }
     }
 
-    if (signs != null && signs.isNotEmpty) {
-      final streams = signs.map((sign) => sign.canDriveBy).toList()
-        ..add(_congestion(nextConnection, direction));
+    final streams = [
+      _congestion(nextConnection, direction),
+      Observable.just(true)
+    ];
 
-      return Observable.combineLatest(
-              streams,
-              (List<bool> values) =>
-                  values.fold(true, (bool prev, value) => prev && value))
-          .where(test)
-          .first;
+    if (signs != null && signs.isNotEmpty) {
+      streams.addAll(signs.map((sign) => sign.canDriveBy));
     }
 
-    return Future.value(true);
+    return Observable.combineLatest(
+            streams,
+            (List<bool> values) =>
+                values.fold(true, (bool prev, value) => prev && value))
+        .where(test)
+        .first;
   }
 
   Observable<bool> _congestion(Connection connection, Direction direction) {
