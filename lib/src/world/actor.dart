@@ -6,13 +6,10 @@ import 'package:rxdart/rxdart.dart';
 import 'package:crossroads/src/world/connection.dart';
 import 'package:crossroads/src/world/point.dart';
 import 'package:crossroads/src/world/vector.dart';
-import 'package:crossroads/src/world/traffic_sign.dart';
 import 'package:crossroads/src/world/motion/reactive_mixin.dart';
 
-enum ActorType { car, bike, pedestrian }
-
 class Actor extends Object with ReactiveMixin {
-  final BehaviorSubject<ActorState> _onState = BehaviorSubject<ActorState>();
+  final BehaviorSubject<Connection> _onState = BehaviorSubject<Connection>();
   final BehaviorSubject<Map<Actor, Point>> _onSnapshot =
       BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
   final StreamController<bool> _onDestroy = StreamController<bool>.broadcast();
@@ -25,34 +22,27 @@ class Actor extends Object with ReactiveMixin {
 
   Stream<bool> get destroy => _onDestroy.stream;
 
-  Observable<ActorState> get state => _onState.stream;
+  Observable<Connection> get state => _onState.stream;
 
-  ActorState get stateSync => _onState.value;
+  Connection get stateSync => _onState.value;
 
-  final ActorType type;
   final List<Connection> path;
   final Point start, end;
 
   bool isDestroyed = false;
   int _currentPathIndex = 0;
 
-  ActorState get nextState {
+  Connection get nextState {
     if (_currentPathIndex < path.length) {
       final connection = path[_currentPathIndex];
-      final isConnectionInverted =
-          _onState.value.connection.resolveEnd(_onState.value.direction) ==
-              connection.end;
-      final direction = isConnectionInverted
-          ? Direction.end_to_start
-          : Direction.start_to_end;
 
-      return ActorState(connection, direction);
+      return connection;
     }
 
     return null;
   }
 
-  Actor(this.type, this.path, this.start, this.end) {
+  Actor(this.path, this.start, this.end) {
     path.first.congested
         .where((state) => !state.isCongested)
         .first
@@ -63,8 +53,7 @@ class Actor extends Object with ReactiveMixin {
         final localMap = <Actor, Point>{};
 
         snapshot.forEach((actor, point) {
-          if (!actor.isDestroyed &&
-              actor._onState.value.isSameState(_onState.value)) {
+          if (!actor.isDestroyed && actor._onState.value == _onState.value) {
             localMap[actor] = point;
           }
         });
@@ -104,10 +93,7 @@ class Actor extends Object with ReactiveMixin {
     }
 
     final connection = path[_currentPathIndex++];
-    final isConnectionInverted = entryPoint == connection.end;
-    final direction =
-        isConnectionInverted ? Direction.end_to_start : Direction.start_to_end;
-    final exitPoint = isConnectionInverted ? connection.start : connection.end;
+    final exitPoint = connection.end;
 
     setPoint(entryPoint);
 
@@ -116,30 +102,18 @@ class Actor extends Object with ReactiveMixin {
           exitPoint.x - entryPoint.x,
           exitPoint.y - entryPoint.y,
           Duration(
-              milliseconds: (_normal_speed * connection.totalDistance() / 100).floor()))
+              milliseconds:
+                  (_normal_speed * connection.totalDistance() / 100).floor()))
     ]);
 
-    _onState.add(ActorState(connection, direction));
+    _onState.add(connection);
   }
 
   Future<bool> _canSwitchConnection(Point entryPoint, bool test(bool value)) {
     //todo: based on rules, change connection when allowed
     //todo: connection saturation should be a dynamic traffic sign
     final nextConnection = path[_currentPathIndex];
-    final isConnectionInverted = entryPoint == nextConnection.end;
-    final direction =
-        isConnectionInverted ? Direction.end_to_start : Direction.start_to_end;
-    List<TrafficSign> signs;
-
-    for (var i = 0, len = nextConnection.configs.length; i < len; i++) {
-      final config = nextConnection.configs[i];
-
-      if (config.direction == direction) {
-        signs = config.accepts[stateSync.connection];
-
-        break;
-      }
-    }
+    final signs = nextConnection.accepts[stateSync];
 
     final streams = [
       nextConnection.congested
@@ -159,10 +133,17 @@ class Actor extends Object with ReactiveMixin {
 
     final completer = Completer<bool>();
 
+    final doComplete = (bool value) {
+      _onSwitchSubscription.cancel();
+      _onSwitchSubscription = null;
+
+      completer.complete(value);
+    };
+
     _onSwitchSubscription = Observable.race(
             [_onDestroy.stream.map((_) => false), stream.where(test)])
         .take(1)
-        .listen(completer.complete);
+        .listen(doComplete);
 
     return completer.future;
   }
@@ -172,7 +153,7 @@ class Actor extends Object with ReactiveMixin {
 
     final state = _onState.value;
     final point = snapshot[this];
-    final endPoint = state.connection.resolveEnd(state.direction);
+    final endPoint = state.end;
     final dy = point.distanceTo(endPoint);
     double dist = 0xffffffff;
     Point obstruction;
@@ -205,19 +186,20 @@ class Actor extends Object with ReactiveMixin {
     void applyStop() => onLinearModifiers.add(const <Vector>[]);
 
     void applyDeceleration() {
-      final startPoint = state.connection.resolveStart(state.direction);
-      final dx = state.connection.end.x == state.connection.start.x
+      final startPoint = state.start;
+      final dx = state.end.x == state.start.x
               ? endPoint.x - startPoint.x
               : obstruction.x - point.x,
-          dy = state.connection.end.y == state.connection.start.y
+          dy = state.end.y == state.start.y
               ? endPoint.y - startPoint.y
               : obstruction.y - point.y;
 
-      onLinearModifiers.add([Vector(dx, dy, Duration(milliseconds: _normal_speed))]);
+      onLinearModifiers
+          .add([Vector(dx, dy, Duration(milliseconds: _normal_speed))]);
     }
 
     void applyNormal() {
-      final startPoint = state.connection.resolveStart(state.direction);
+      final startPoint = state.start;
 
       onLinearModifiers.add([
         Vector(
@@ -225,7 +207,7 @@ class Actor extends Object with ReactiveMixin {
             endPoint.y - startPoint.y,
             Duration(
                 milliseconds:
-                    (_normal_speed * state.connection.totalDistance() / 100).floor()))
+                    (_normal_speed * state.totalDistance() / 100).floor()))
       ]);
     }
 
@@ -239,18 +221,8 @@ class Actor extends Object with ReactiveMixin {
       } else {
         applyNormal();
       }
-    } else if (state.connection != path.last) {
+    } else if (state != path.last) {
       applyNormal();
     }
   }
-}
-
-class ActorState {
-  final Connection connection;
-  final Direction direction;
-
-  ActorState(this.connection, this.direction);
-
-  bool isSameState(ActorState other) =>
-      connection == other.connection && direction == other.direction;
 }

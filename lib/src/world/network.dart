@@ -1,4 +1,3 @@
-import 'package:crossroads/src/world/actor.dart';
 import 'package:crossroads/src/world/connection.dart';
 import 'package:crossroads/src/world/point.dart';
 
@@ -25,16 +24,6 @@ class Network {
     return map;
   }
 
-  Iterable<Connection> possibleConnections(
-          final Point start, final ActorType type) =>
-      pointMapped[start].where((connector) =>
-          connector.configs.firstWhere(
-              (config) =>
-                  config.type == type &&
-                  (connector.start == start &&
-                          config.direction == Direction.start_to_end ||
-                      connector.end == start &&
-                          config.direction == Direction.end_to_start),
-              orElse: () => null) !=
-          null);
+  Iterable<Connection> possibleConnections(final Point start) =>
+      pointMapped[start].where((connector) => connector.start == start);
 }

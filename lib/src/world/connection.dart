@@ -4,12 +4,12 @@ import 'package:crossroads/src/world/actor.dart';
 import 'package:crossroads/src/world/point.dart';
 import 'package:crossroads/src/world/traffic_sign.dart';
 
-enum Direction { start_to_end, end_to_start }
 enum Speed { freeway, divided, undivided, residential }
 
 class Connection {
   final Point start, end;
-  final List<ConnectionConfig> configs;
+  final Map<Connection, List<TrafficSign>> accepts;
+  final Speed speed;
   final BehaviorSubject<CongestionState> _onCongested =
       BehaviorSubject<CongestionState>(
           seedValue: const CongestionState(null, false));
@@ -21,48 +21,17 @@ class Connection {
       _congested ??= _onCongested.stream
           .distinct((sA, sB) => sA.isCongested == sB.isCongested);
 
-  Connection(this.start, this.end, this.configs);
+  Connection(this.start, this.end, this.speed, this.accepts);
 
-  bool resolveAccess(final ActorType type, final Point entry) {
-    for (int i = 0, len = configs.length; i < len; i++) {
-      final lane = configs[i];
+  bool resolveAccess(final Point entry) => entry == start;
 
-      if (lane.type == type) {
-        switch (lane.direction) {
-          case Direction.start_to_end:
-            return entry == start;
-          case Direction.end_to_start:
-            return entry == end;
-        }
-      }
-    }
+  bool resolveIsAtStart(Point point) =>
+      point == start || end.distanceTo(point) > totalDistance();
 
-    return false;
-  }
-
-  Point resolveStart(Direction direction) =>
-      direction == Direction.start_to_end ? start : end;
-
-  Point resolveEnd(Direction direction) =>
-      direction == Direction.start_to_end ? end : start;
-
-  bool resolveIsAtStart(Point point, Direction direction) =>
-      direction == Direction.start_to_end ? point == start : point == end;
-
-  bool resolveIsAtEnd(Point point, Direction direction) =>
-      (direction == Direction.start_to_end ? point == end : point == start) ||
-      resolveStart(direction).distanceTo(point) > totalDistance();
+  bool resolveIsAtEnd(Point point) =>
+      point == end || start.distanceTo(point) > totalDistance();
 
   double totalDistance() => start.distanceTo(end);
-}
-
-class ConnectionConfig {
-  final ActorType type;
-  final Direction direction;
-  final Map<Connection, List<TrafficSign>> accepts;
-  final Speed speed;
-
-  const ConnectionConfig(this.type, this.direction, this.accepts, this.speed);
 }
 
 class CongestionState {

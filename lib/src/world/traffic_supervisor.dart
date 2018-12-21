@@ -14,7 +14,7 @@ class TrafficSupervisor {
   final StreamController<List<ActorSpawner>> _onSpawners =
       StreamController<List<ActorSpawner>>();
   final Stream<void> sampler =
-      Stream.periodic(const Duration(milliseconds: 30), (_) => null)
+      Stream.periodic(const Duration(milliseconds: 60), (_) => null)
           .asBroadcastStream();
 
   Sink<List<ActorSpawner>> get onSpawners => _onSpawners.sink;
@@ -27,12 +27,10 @@ class TrafficSupervisor {
 
   void _init() {
     final maybeSwitchConnection = (Actor actor) => (Point point) async* {
-          final state = await actor.state.first,
-              connection = state.connection,
-              direction = state.direction;
+          final state = await actor.state.first, connection = state;
 
-          if (connection.resolveIsAtEnd(point, direction)) {
-            await actor.nextConnection(connection.resolveEnd(direction));
+          if (connection.resolveIsAtEnd(point)) {
+            await actor.nextConnection(connection.end);
           }
 
           yield point;
@@ -48,12 +46,12 @@ class TrafficSupervisor {
       if (isDeletion) {
         transformed.remove(mappedActor.actor);
       } else {
-        final isCongested = mappedActor.actor.stateSync.connection.start
-                .distanceTo(mappedActor.point) <
-            10;
+        final isCongested =
+            mappedActor.actor.stateSync.start.distanceTo(mappedActor.point) <
+                10;
         transformed[mappedActor.actor] = mappedActor.point;
 
-        mappedActor.actor.stateSync.connection.onCongested.add(isCongested
+        mappedActor.actor.stateSync.onCongested.add(isCongested
             ? CongestionState(mappedActor.actor, true)
             : const CongestionState(null, false));
       }

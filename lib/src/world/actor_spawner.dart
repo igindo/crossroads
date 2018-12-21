@@ -11,7 +11,6 @@ import 'package:crossroads/src/world/point.dart';
 
 class ActorSpawner {
   final Network network;
-  final ActorType forType;
   final Point entryPoint;
   final List<Point> exitPoints;
   final StreamController<bool> _onClose = new StreamController<bool>();
@@ -21,24 +20,23 @@ class ActorSpawner {
   Observable<Actor> get next => _next ??=
       Observable(randInterval()).takeUntil(_onClose.stream).map(nextActor);
 
-  ActorSpawner(this.network, this.forType, this.entryPoint, this.exitPoints);
+  ActorSpawner(this.network, this.entryPoint, this.exitPoints);
 
   Actor nextActor(final _) {
     final random = new math.Random();
     final exitPoint = exitPoints[random.nextInt(exitPoints.length)];
     final resolvedConnection = resolvedConnections.firstWhere(
         (res) =>
-            res.forType == forType &&
             res.entryPoint == entryPoint &&
             res.exitPoint == exitPoint,
-        orElse: () => ResolvedConnection(forType, entryPoint, exitPoint,
-            resolveConnection(network, entryPoint, exitPoint, forType)));
+        orElse: () => ResolvedConnection(entryPoint, exitPoint,
+            resolveConnection(network, entryPoint, exitPoint)));
 
     if (!resolvedConnections.contains(resolvedConnection)) {
       resolvedConnections.add(resolvedConnection);
     }
 
-    return Actor(forType, resolvedConnection.path, entryPoint, exitPoint);
+    return Actor(resolvedConnection.path, entryPoint, exitPoint);
   }
 
   void close() {
@@ -56,8 +54,7 @@ class ActorSpawner {
 
 class ResolvedConnection {
   final Point entryPoint, exitPoint;
-  final ActorType forType;
   final List<Connection> path;
 
-  ResolvedConnection(this.forType, this.entryPoint, this.exitPoint, this.path);
+  ResolvedConnection(this.entryPoint, this.exitPoint, this.path);
 }

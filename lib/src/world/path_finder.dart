@@ -1,14 +1,13 @@
 import 'dart:collection';
 import 'dart:math';
 
-import 'package:crossroads/src/world/actor.dart';
 import 'package:crossroads/src/world/connection.dart';
 import 'package:crossroads/src/world/network.dart';
 import 'package:crossroads/src/world/point.dart';
 
 List<Connection> resolveConnection(final Network network, final Point start,
-    final Point end, final ActorType type) {
-  final points = _resolvePoints(network, start, end, type);
+    final Point end) {
+  final points = _resolvePoints(network, start, end);
 
   List<Connection> toConnections(final List<Point> points) {
     final len = points.length;
@@ -37,7 +36,7 @@ List<Connection> resolveConnection(final Network network, final Point start,
 }
 
 List<Point> _resolvePoints(final Network network, final Point start,
-    final Point end, final ActorType type) {
+    final Point end) {
   final calculations = <Point, _Calc>{};
   final open = <Point>[], closed = <Point>[];
 
@@ -85,7 +84,7 @@ List<Point> _resolvePoints(final Network network, final Point start,
     closed.add(currentPoint);
 
     final connections =
-        network.possibleConnections(currentPoint, type).toList(growable: false);
+        network.possibleConnections(currentPoint).toList(growable: false);
 
     for (var i = 0, len = connections.length; i < len; i++) {
       final connection = connections[i];
