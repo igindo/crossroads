@@ -14,8 +14,7 @@ class TrafficSupervisor {
   final StreamController<List<ActorSpawner>> _onSpawners =
       StreamController<List<ActorSpawner>>();
   final Stream<void> sampler =
-      Stream.periodic(const Duration(milliseconds: 60), (_) => null)
-          .asBroadcastStream();
+      Stream.periodic(const Duration(milliseconds: 60)).asBroadcastStream();
 
   Sink<List<ActorSpawner>> get onSpawners => _onSpawners.sink;
 
@@ -27,10 +26,8 @@ class TrafficSupervisor {
 
   void _init() {
     final maybeSwitchConnection = (Actor actor) => (Point point) async* {
-          final state = await actor.state.first, connection = state;
-
-          if (connection.resolveIsAtEnd(point)) {
-            await actor.nextConnection(connection.end);
+          if (actor.stateSync.resolveIsAtEnd(point)) {
+            await actor.nextConnection(actor.stateSync.end);
           }
 
           yield point;
