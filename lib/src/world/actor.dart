@@ -16,6 +16,7 @@ class Actor extends Object with ReactiveMixin {
   final BehaviorSubject<Map<Actor, Point>> _onSnapshot =
       BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
   final StreamController<bool> _onDestroy = StreamController<bool>.broadcast();
+  final int _normal_speed = 4000;
 
   StreamSubscription<void> _onSnapshotSubscription;
   StreamSubscription<bool> _onSwitchSubscription;
@@ -111,8 +112,11 @@ class Actor extends Object with ReactiveMixin {
     setPoint(entryPoint);
 
     onLinearModifiers.add([
-      Vector(exitPoint.x - entryPoint.x, exitPoint.y - entryPoint.y,
-          Duration(milliseconds: (15 * connection.totalDistance()).floor()))
+      Vector(
+          exitPoint.x - entryPoint.x,
+          exitPoint.y - entryPoint.y,
+          Duration(
+              milliseconds: (_normal_speed * connection.totalDistance() / 100).floor()))
     ]);
 
     _onState.add(ActorState(connection, direction));
@@ -139,8 +143,8 @@ class Actor extends Object with ReactiveMixin {
 
     final streams = [
       nextConnection.congested
-          .where((state) => !state.isCongested || state.actor != this)
-          .map((_) => true),
+          .where((state) => state.actor != this)
+          .map((state) => !state.isCongested),
       Observable.just(true)
     ];
 
@@ -209,7 +213,7 @@ class Actor extends Object with ReactiveMixin {
               ? endPoint.y - startPoint.y
               : obstruction.y - point.y;
 
-      onLinearModifiers.add([Vector(dx, dy, Duration(milliseconds: 1500))]);
+      onLinearModifiers.add([Vector(dx, dy, Duration(milliseconds: _normal_speed))]);
     }
 
     void applyNormal() {
@@ -220,7 +224,8 @@ class Actor extends Object with ReactiveMixin {
             endPoint.x - startPoint.x,
             endPoint.y - startPoint.y,
             Duration(
-                milliseconds: (15 * state.connection.totalDistance()).floor()))
+                milliseconds:
+                    (_normal_speed * state.connection.totalDistance() / 100).floor()))
       ]);
     }
 

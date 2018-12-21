@@ -49,7 +49,7 @@ class ActorSpawner {
 
   Stream<bool> randInterval() async* {
     yield await Future.delayed(
-        Duration(milliseconds: math.Random().nextInt(1500) + 500), () => true);
+        Duration(milliseconds: math.Random().nextInt(4000) + 4000), () => true);
     yield* randInterval();
   }
 }

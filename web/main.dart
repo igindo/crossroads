@@ -10,8 +10,6 @@ void main() {
     const Duration(seconds: 8),
     const Duration(seconds: 2),
     const Duration(seconds: 8),
-    const Duration(seconds: 2),
-    const Duration(seconds: 8),
     const Duration(seconds: 2)
   ]);
 
@@ -57,7 +55,7 @@ void main() {
       r3_l2 = createConnection(r3.end, l2.start, Direction.start_to_end, accepts: {r3: [Stoplight(scheduler, (i) => i == 0)]}),
       r3_r4 = createConnection(r3.end, r4.start, Direction.start_to_end, accepts: {r3: [Stoplight(scheduler, (i) => i == 0)]}),
       l4_l2 = createConnection(l4.end, l2.start, Direction.start_to_end, accepts: {l4: [Stoplight(scheduler, (i) => i == 2)]}),
-      l4_l3 = createConnection(l4.end, l3.start, Direction.start_to_end, accepts: {l4: [Stoplight(scheduler, (i) => i == 2)]});
+      l4_l3 = createConnection(l4.end, l3.start, Direction.start_to_end, accepts: {l4: [Stoplight(scheduler, (i) => i == 1)]});
 
   final network = Network([
     r1,
