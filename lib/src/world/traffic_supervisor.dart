@@ -37,9 +37,6 @@ class TrafficSupervisor {
         .map((connection) => ConnectionPoint(point, connection));
     final toMappedActor =
         (Actor actor) => (ConnectionPoint cp) => MappedActor(actor, cp);
-    final onDestroy = (Actor actor) => actor.onDestroy.stream
-        .take(1)
-        .map((_) => MappedActor.asDeletion(actor));
     final combiner = (Map<Actor, Point> snapshot, MappedActor mappedActor) {
       final transformed = Map<Actor, Point>.from(snapshot);
       final isDeletion = mappedActor.cp == null;
@@ -66,21 +63,20 @@ class TrafficSupervisor {
     };
     final onNext = Observable(_onSpawners.stream)
         .expand((spawners) => spawners)
-        .flatMap((spawner) => spawner.next)
-        .asBroadcastStream();
+        .flatMap((spawner) => spawner.next);
+    final onPosition = (Actor actor) => actor
+        .sampledPosition(sampler)
+        .exhaustMap(toConnectionPoint(actor))
+        .exhaustMap(maybeSwitchConnection(actor))
+        .map(toMappedActor(actor))
+        .takeUntil(actor.onDestroy.stream);
+    final onDestroy = (Actor actor) => actor.onDestroy.stream
+        .take(1)
+        .map((_) => MappedActor.asDeletion(actor));
+    final onActorEvents = (Actor actor) =>
+        Observable.merge([onPosition(actor), onDestroy(actor)]);
 
-    Observable.zip2(
-            _onSnapshot.stream,
-            Observable.merge([
-              onNext.flatMap((actor) => actor
-                  .sampledPosition(sampler)
-                  .exhaustMap(toConnectionPoint(actor))
-                  .exhaustMap(maybeSwitchConnection(actor))
-                  .map(toMappedActor(actor))
-                  .takeUntil(actor.onDestroy.stream)),
-              onNext.flatMap(onDestroy)
-            ]),
-            combiner)
+    Observable.zip2(_onSnapshot.stream, onNext.flatMap(onActorEvents), combiner)
         .listen(handleSnapshot);
   }
 }
