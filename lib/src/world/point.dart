@@ -12,6 +12,10 @@ class Point {
   double distanceTo(Point other) =>
       math.sqrt(math.pow(other.x - x, 2) + math.pow(other.y - y, 2));
 
+  Point ceiled() => Point(x.ceil().toDouble(), y.ceil().toDouble());
+
+  Point floored() => Point(x.floor().toDouble(), y.floor().toDouble());
+
   @override
   bool operator ==(Object other) =>
       other is Point && this.x == other.x && this.y == other.y;

@@ -94,19 +94,21 @@ void main() {
     ActorSpawner(network, l4.start, [l1.end, l2_1.end, l3.end])
   ]);
 
+  const colors = ['red', 'green', 'blue', 'purple', 'pink'];
+  final colorPoints = Set<Point>();
+
   supervisor.snapshot.listen((snapshot) {
     final CanvasRenderingContext2D context = canvas.getContext('2d');
 
     context.clearRect(0, 0, 800, 665);
 
     snapshot.forEach((actor, point) {
+      colorPoints.add(actor.end);
+
       context.beginPath();
       context.arc(point.x, point.y, 4, 0, 2 * math.pi);
-      context.fillStyle = actor.hashCode % 3 == 0
-          ? 'green'
-          : actor.hashCode % 3 == 1
-              ? 'red'
-              : actor.hashCode % 3 == 2 ? 'blue' : 'black';
+      context.fillStyle =
+          colors[colorPoints.toList(growable: false).indexOf(actor.end)];
       context.fill();
       context.lineWidth = 1;
       context.strokeStyle = 'white';

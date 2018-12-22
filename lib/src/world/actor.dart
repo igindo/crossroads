@@ -5,6 +5,7 @@ import 'package:rxdart/rxdart.dart';
 
 import 'package:crossroads/src/world/connection.dart';
 import 'package:crossroads/src/world/point.dart';
+import 'package:crossroads/src/world/traffic_sign.dart';
 import 'package:crossroads/src/world/vector.dart';
 import 'package:crossroads/src/world/motion/reactive_mixin.dart';
 
@@ -110,26 +111,26 @@ class Actor extends Object with ReactiveMixin {
     //todo: connection saturation should be a dynamic traffic sign
     final nextConnection = path[_currentPathIndex];
     final signs = nextConnection.accepts[_onConnection.value];
-
-    final streams = [
-      nextConnection.congested
-          .distinct()
-          .where((state) => state.actor != this)
-          .map((state) => !state.isCongested),
-      Observable.just(true)
-    ];
-
-    if (signs != null && signs.isNotEmpty) {
-      streams.addAll(signs.map((sign) => sign.canDriveBy));
-    }
-
-    final stream = streams.length == 2
-        ? streams.first
-        : Observable.combineLatest(
-            streams, (List<bool> values) => values.every((value) => value));
-
+    final congested = nextConnection.congested
+        .distinct()
+        .where((state) => state.actor != this)
+        .map((state) => !state.isCongested);
+    final maybeCombineStreams = (List<TrafficSign> signs) => (signs.length > 1)
+        ? Observable.combineLatest(
+            signs.map((sign) => sign.canDriveBy),
+            (List<bool> values) =>
+                values.fold(true, (prev, curr) => prev && curr))
+        : signs.first.canDriveBy;
+    final resolveStream =
+        (List<TrafficSign> signs, Observable<bool> congested) =>
+            (signs != null && signs.isNotEmpty)
+                ? Observable.combineLatest2(
+                    congested,
+                    maybeCombineStreams(signs),
+                    (bool isCongested, bool canDriveBy) =>
+                        isCongested && canDriveBy)
+                : congested;
     final completer = Completer<bool>();
-
     final doComplete = (bool value) {
       _onSwitchSubscription.cancel();
       _onSwitchSubscription = null;
@@ -137,10 +138,10 @@ class Actor extends Object with ReactiveMixin {
       completer.complete(value);
     };
 
-    _onSwitchSubscription = Observable.race(
-            [onDestroy.stream.map((_) => false), stream.where(test)])
-        .take(1)
-        .listen(doComplete);
+    _onSwitchSubscription = Observable.race([
+      onDestroy.stream.map((_) => false),
+      resolveStream(signs, congested).where(test)
+    ]).take(1).listen(doComplete);
 
     return completer.future;
   }

@@ -25,11 +25,17 @@ class Connection {
 
   bool resolveAccess(final Point entry) => entry == start;
 
-  bool resolveIsAtStart(Point point) =>
-      point == start || end.distanceTo(point) > totalDistance();
+  bool resolveIsAtStart(Point point) {
+    final floored = point.floored();
 
-  bool resolveIsAtEnd(Point point) =>
-      point == end || start.distanceTo(point) > totalDistance();
+    return floored == start || end.distanceTo(floored) > totalDistance();
+  }
+
+  bool resolveIsAtEnd(Point point) {
+    final ceiled = point.ceiled();
+
+    return ceiled == end || start.distanceTo(ceiled) > totalDistance();
+  }
 
   double totalDistance() => start.distanceTo(end);
 }
