@@ -50,19 +50,32 @@ class TrafficSupervisor {
                 .distanceTo(mappedActor.cp.point),
             d1 = mappedActor.cp.connection.end.distanceTo(mappedActor.cp.point);
         final isCongested = d0 < 10, isActorLeaving = d1 < 40;
-        final cs = isCongested || isActorLeaving
-            ? CongestionState(mappedActor.actor, isCongested, isActorLeaving)
-            : const CongestionState.none();
+        final oldCs = mappedActor.cp.connection.congestionStateSync ??
+            const CongestionState.none();
+        final cs =
+            oldCs.updateWith(mappedActor.actor, isCongested, isActorLeaving);
 
         transformed[mappedActor.actor] = mappedActor.cp.point;
 
+        mappedActor.cp.connection.onCongested.add(cs);
         activeCongestion[mappedActor.cp.connection] = cs;
 
-        mappedActor.cp.connection.onCongested.add(cs);
-
         activeCongestion.forEach((connection, cs) {
-          if (cs.actor != null && connection != cs.actor.connectionSync)
-            connection.onCongested.add(const CongestionState.none());
+          var transformed = cs;
+
+          if (transformed.congestionActor != null &&
+              connection != transformed.congestionActor.connectionSync) {
+            transformed = transformed.updateWith(
+                transformed.congestionActor, false, false);
+          }
+
+          if (transformed.leavingActor != null &&
+              connection != transformed.leavingActor.connectionSync) {
+            transformed =
+                transformed.updateWith(transformed.leavingActor, false, false);
+          }
+
+          connection.onCongested.add(transformed);
         });
       }
 

@@ -115,7 +115,7 @@ class Actor extends Object with ReactiveMixin {
     final signs = nextConnection.accepts[_onConnection.value];
     final congested = nextConnection.congested
         .distinct()
-        .where((state) => state.actor != this)
+        .where((state) => state.congestionActor != this)
         .map((state) => !state.isCongested);
     final maybeCombineStreams = (List<TrafficSign> signs) => (signs.length > 1)
         ? Observable.combineLatest(

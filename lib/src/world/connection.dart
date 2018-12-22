@@ -45,14 +45,27 @@ class Connection {
 }
 
 class CongestionState {
-  final Actor actor;
+  final Actor congestionActor, leavingActor;
   final bool isCongested;
   final bool isActorLeaving;
 
-  const CongestionState(this.actor, this.isCongested, this.isActorLeaving);
+  const CongestionState(this.congestionActor, this.leavingActor,
+      this.isCongested, this.isActorLeaving);
 
   const CongestionState.none()
-      : this.actor = null,
+      : this.congestionActor = null,
+        this.leavingActor = null,
         this.isCongested = false,
         this.isActorLeaving = false;
+
+  CongestionState updateWith(Actor actor, bool congestion, bool leaving) {
+    final sameCongestion = actor == congestionActor,
+        sameLeaving = actor == leavingActor;
+
+    return CongestionState(
+        congestion ? actor : (sameCongestion ? null : congestionActor),
+        leaving ? actor : (sameLeaving ? null : leavingActor),
+        congestion ? true : (sameCongestion ? false : isCongested),
+        leaving ? true : (sameLeaving ? false : isActorLeaving));
+  }
 }
