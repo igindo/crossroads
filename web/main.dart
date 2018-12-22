@@ -34,7 +34,7 @@ void main() {
       r3 = createConnection(const Point(731, 473), c1234[3]),
       l3 = createConnection(c1234[2], const Point(731, 488)),
       r4 = createConnection(c1234[3], const Point(243, 285)),
-      l4 = createConnection(const Point(225, 290), c1234[0]),
+      l4 = createConnection(const Point(225, 290), const Point(279, 336)),
       r1_l3 = createConnection(r1.end, l3.start, accepts: {
     r1: [Stoplight(scheduler, (i) => i == 0)]
   }),
@@ -56,10 +56,16 @@ void main() {
       r3_r4 = createConnection(r3.end, r4.start, accepts: {
     r3: [Stoplight(scheduler, (i) => i == 0)]
   }),
-      l4_l2 = createConnection(l4.end, l2.start, accepts: {
+      r5 = createConnection(const Point(104, 405), const Point(179, 470)),
+      r5_1 = createConnection(r5.end, l4.end),
+      l4_1 = createConnection(l4.end, c1234[0], accepts: {
+    l4: [Stoplight(scheduler, (i) => i == 0)],
+    r5_1: [Stoplight(scheduler, (i) => i == 2)]
+  }),
+      l4_l2 = createConnection(l4_1.end, l2.start, accepts: {
     l4: [Stoplight(scheduler, (i) => i == 2)]
   }),
-      l4_l3 = createConnection(l4.end, l3.start, accepts: {
+      l4_l3 = createConnection(l4_1.end, l3.start, accepts: {
     l4: [Stoplight(scheduler, (i) => i == 1)]
   });
 
@@ -74,6 +80,7 @@ void main() {
     l3,
     r4,
     l4,
+    l4_1,
     r1_l3,
     r2_l1,
     r3_l1,
@@ -82,7 +89,9 @@ void main() {
     r2_r4,
     r3_r4,
     l4_l2,
-    l4_l3
+    l4_l3,
+    r5,
+    r5_1
   ]);
 
   final supervisor = new TrafficSupervisor();
@@ -91,7 +100,8 @@ void main() {
     ActorSpawner(network, r1.start, [l2_1.end, l3.end, r4.end]),
     ActorSpawner(network, r2_1.start, [l1.end, l3.end, r4.end]),
     ActorSpawner(network, r3.start, [l1.end, l2_1.end, r4.end]),
-    ActorSpawner(network, l4.start, [l1.end, l2_1.end, l3.end])
+    ActorSpawner(network, l4.start, [l1.end, l2_1.end, l3.end]),
+    ActorSpawner(network, r5.start, [l1.end, l2_1.end, l3.end])
   ]);
 
   const colors = ['red', 'green', 'blue', 'purple', 'pink'];
@@ -107,7 +117,8 @@ void main() {
       context.moveTo(connection.start.x, connection.start.y);
       context.lineTo(connection.end.x, connection.end.y);
       context.closePath();
-      context.strokeStyle = connection.congestionStateSync.isCongested ? 'red' : 'black';
+      context.strokeStyle =
+          connection.congestionStateSync.isCongested ? 'red' : 'black';
       context.stroke();
     });
 
