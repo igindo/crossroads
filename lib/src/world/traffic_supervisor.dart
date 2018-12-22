@@ -25,30 +25,34 @@ class TrafficSupervisor {
   }
 
   void _init() {
-    final maybeSwitchConnection = (Actor actor) => (Point point) async* {
-          if (actor.stateSync.resolveIsAtEnd(point)) {
-            await actor.nextConnection(actor.stateSync.end);
+    final maybeSwitchConnection = (Actor actor) => (ConnectionPoint cp) async* {
+          if (cp.connection.resolveIsAtEnd(cp.point)) {
+            await actor.nextConnection(cp.connection.end);
           }
 
-          yield point;
+          yield cp;
         };
+    final toConnectionPoint = (Actor actor) => (Point point) => actor.connection
+        .take(1)
+        .map((connection) => ConnectionPoint(point, connection));
     final toMappedActor =
-        (Actor actor) => (Point point) => MappedActor(actor, point);
-    final onDestroy = (Actor actor) =>
-        actor.destroy.take(1).map((_) => MappedActor.asDeletion(actor));
+        (Actor actor) => (ConnectionPoint cp) => MappedActor(actor, cp);
+    final onDestroy = (Actor actor) => actor.onDestroy.stream
+        .take(1)
+        .map((_) => MappedActor.asDeletion(actor));
     final combiner = (Map<Actor, Point> snapshot, MappedActor mappedActor) {
       final transformed = Map<Actor, Point>.from(snapshot);
-      final isDeletion = mappedActor.point == null;
+      final isDeletion = mappedActor.cp == null;
 
       if (isDeletion) {
         transformed.remove(mappedActor.actor);
       } else {
         final isCongested =
-            mappedActor.actor.stateSync.start.distanceTo(mappedActor.point) <
+            mappedActor.cp.connection.start.distanceTo(mappedActor.cp.point) <
                 10;
-        transformed[mappedActor.actor] = mappedActor.point;
+        transformed[mappedActor.actor] = mappedActor.cp.point;
 
-        mappedActor.actor.stateSync.onCongested.add(isCongested
+        mappedActor.cp.connection.onCongested.add(isCongested
             ? CongestionState(mappedActor.actor, true)
             : const CongestionState(null, false));
       }
@@ -70,9 +74,10 @@ class TrafficSupervisor {
             Observable.merge([
               onNext.flatMap((actor) => actor
                   .sampledPosition(sampler)
+                  .exhaustMap(toConnectionPoint(actor))
                   .exhaustMap(maybeSwitchConnection(actor))
                   .map(toMappedActor(actor))
-                  .takeUntil(actor.destroy)),
+                  .takeUntil(actor.onDestroy.stream)),
               onNext.flatMap(onDestroy)
             ]),
             combiner)
@@ -80,11 +85,18 @@ class TrafficSupervisor {
   }
 }
 
+class ConnectionPoint {
+  final Point point;
+  final Connection connection;
+
+  ConnectionPoint(this.point, this.connection);
+}
+
 class MappedActor {
   final Actor actor;
-  final Point point;
+  final ConnectionPoint cp;
 
-  MappedActor(this.actor, this.point);
+  MappedActor(this.actor, this.cp);
 
   factory MappedActor.asDeletion(Actor actor) => MappedActor(actor, null);
 }

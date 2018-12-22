@@ -13,6 +13,7 @@ abstract class ReactiveMixin {
       new BehaviorSubject<Iterable<Vector>>(seedValue: const []);
   BehaviorSubject<Iterable<Timestamped<Vector>>> _onVectorTimes =
       new BehaviorSubject<Iterable<Timestamped<Vector>>>(seedValue: const []);
+  final StreamController<bool> onDestroy = StreamController<bool>.broadcast();
 
   StreamSubscription<Iterable<Timestamped<Vector>>> _vectorTimesSubscription;
   StreamSubscription<Point> _positionSubscription;
@@ -26,12 +27,15 @@ abstract class ReactiveMixin {
   void setPoint(Point value) => _p1 = value;
 
   void cleanUp() {
+    onDestroy.add(true);
+
     _vectorTimesSubscription?.cancel();
     _positionSubscription?.cancel();
 
     _onVector.close();
     _onVectorTimes.close();
     _onLinearModifiers.close();
+    onDestroy.close();
   }
 
   Observable<Point> sampledPosition(final Stream sampler) {
@@ -43,6 +47,7 @@ abstract class ReactiveMixin {
         .listen(_onVectorTimes.add);
 
     _positionSubscription = Observable(sampler)
+        .takeUntil(onDestroy.stream)
         .timestamp()
         .bufferCount(2, 1)
         .map(_pairTimeDeltaMs)
@@ -56,6 +61,7 @@ abstract class ReactiveMixin {
 
     return _onVectorTimes
         .sample(sampler)
+        .takeUntil(onDestroy.stream)
         .map(_splitTimeFrame())
         .doOnData((tuple) => setPoint(_p1.add(tuple.item2)))
         .map((tuple) => tuple.item1)
