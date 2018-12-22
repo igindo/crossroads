@@ -11,18 +11,19 @@ class Connection {
   final Map<Connection, List<TrafficSign>> accepts;
   final Speed speed;
   final BehaviorSubject<CongestionState> _onCongested =
-      BehaviorSubject<CongestionState>(
-          seedValue: const CongestionState(null, false));
+      BehaviorSubject<CongestionState>(seedValue: const CongestionState.none());
   double _totalDistance;
 
+  // todo: for debug only
   CongestionState get congestionStateSync => _onCongested.value;
 
   Sink<CongestionState> get onCongested => _onCongested.sink;
 
   Observable<CongestionState> _congested;
   Observable<CongestionState> get congested =>
-      _congested ??= _onCongested.stream
-          .distinct((sA, sB) => sA.isCongested == sB.isCongested);
+      _congested ??= _onCongested.stream.distinct((sA, sB) =>
+          sA.isCongested == sB.isCongested &&
+          sA.isActorLeaving == sB.isActorLeaving);
 
   Connection(this.start, this.end, this.speed, this.accepts);
 
@@ -46,6 +47,12 @@ class Connection {
 class CongestionState {
   final Actor actor;
   final bool isCongested;
+  final bool isActorLeaving;
 
-  const CongestionState(this.actor, this.isCongested);
+  const CongestionState(this.actor, this.isCongested, this.isActorLeaving);
+
+  const CongestionState.none()
+      : this.actor = null,
+        this.isCongested = false,
+        this.isActorLeaving = false;
 }

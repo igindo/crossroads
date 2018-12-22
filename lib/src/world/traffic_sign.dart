@@ -1,5 +1,7 @@
 import 'package:rxdart/rxdart.dart';
 
+import 'package:crossroads/src/world/connection.dart';
+
 abstract class TrafficSign {
   Observable<bool> get canDriveBy;
 }
@@ -37,5 +39,25 @@ class StoplightScheduler {
     }
 
     yield* _asStream();
+  }
+}
+
+class GivePriority implements TrafficSign {
+  final List<Connection> priorityConnections;
+
+  final BehaviorSubject<bool> _onCanDriveBy = BehaviorSubject<bool>();
+
+  @override
+  Observable<bool> get canDriveBy => _onCanDriveBy.stream;
+
+  GivePriority(this.priorityConnections) {
+    final stream = priorityConnections.length > 1
+        ? Observable.combineLatest(
+            priorityConnections.map((connection) => connection.congested),
+            (List<CongestionState> values) =>
+                values.fold(true, (prev, curr) => prev && !curr.isActorLeaving))
+        : priorityConnections.first.congested.map((cs) => !cs.isActorLeaving);
+
+    stream.listen(_onCanDriveBy.add);
   }
 }

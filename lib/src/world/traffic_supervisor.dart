@@ -15,6 +15,8 @@ class TrafficSupervisor {
       StreamController<List<ActorSpawner>>();
   final Stream<void> sampler =
       Stream.periodic(const Duration(milliseconds: 60)).asBroadcastStream();
+  Map<Connection, CongestionState> activeCongestion =
+      <Connection, CongestionState>{};
 
   Sink<List<ActorSpawner>> get onSpawners => _onSpawners.sink;
 
@@ -44,16 +46,24 @@ class TrafficSupervisor {
       if (isDeletion) {
         transformed.remove(mappedActor.actor);
       } else {
-        final dy = mappedActor.cp.connection.totalDistance();
-        final d =
-            mappedActor.cp.connection.start.distanceTo(mappedActor.cp.point);
-        final isCongested = dy > 10 && d < 10;
+        final d0 = mappedActor.cp.connection.start
+                .distanceTo(mappedActor.cp.point),
+            d1 = mappedActor.cp.connection.end.distanceTo(mappedActor.cp.point);
+        final isCongested = d0 < 10, isActorLeaving = d1 < 40;
+        final cs = isCongested || isActorLeaving
+            ? CongestionState(mappedActor.actor, isCongested, isActorLeaving)
+            : const CongestionState.none();
 
         transformed[mappedActor.actor] = mappedActor.cp.point;
 
-        mappedActor.cp.connection.onCongested.add(isCongested
-            ? CongestionState(mappedActor.actor, true)
-            : const CongestionState(null, false));
+        activeCongestion[mappedActor.cp.connection] = cs;
+
+        mappedActor.cp.connection.onCongested.add(cs);
+
+        activeCongestion.forEach((connection, cs) {
+          if (cs.actor != null && connection != cs.actor.connectionSync)
+            connection.onCongested.add(const CongestionState.none());
+        });
       }
 
       return Tuple2(isDeletion ? null : mappedActor.actor, transformed);

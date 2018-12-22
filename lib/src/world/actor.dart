@@ -18,6 +18,8 @@ class Actor extends Object with ReactiveMixin {
 
   Observable<Connection> get connection => _onConnection.stream;
 
+  Connection get connectionSync => _onConnection.value;
+
   StreamSubscription<void> _onSnapshotSubscription;
   StreamSubscription<bool> _onSwitchSubscription;
 

@@ -59,14 +59,15 @@ void main() {
       r5 = createConnection(const Point(104, 405), const Point(179, 470)),
       r5_1 = createConnection(r5.end, l4.end),
       l4_1 = createConnection(l4.end, c1234[0], accepts: {
-    l4: [Stoplight(scheduler, (i) => i == 0)],
-    r5_1: [Stoplight(scheduler, (i) => i == 2)]
+    r5_1: [
+      GivePriority([l4])
+    ]
   }),
       l4_l2 = createConnection(l4_1.end, l2.start, accepts: {
-    l4: [Stoplight(scheduler, (i) => i == 2)]
+    l4_1: [Stoplight(scheduler, (i) => i == 2)]
   }),
       l4_l3 = createConnection(l4_1.end, l3.start, accepts: {
-    l4: [Stoplight(scheduler, (i) => i == 1)]
+    l4_1: [Stoplight(scheduler, (i) => i == 1)]
   });
 
   final network = Network([
@@ -117,9 +118,27 @@ void main() {
       context.moveTo(connection.start.x, connection.start.y);
       context.lineTo(connection.end.x, connection.end.y);
       context.closePath();
-      context.strokeStyle =
-          connection.congestionStateSync.isCongested ? 'red' : 'black';
+      context.strokeStyle = connection.congestionStateSync.isCongested
+          ? 'red'
+          : connection.congestionStateSync.isActorLeaving ? 'orange' : 'black';
       context.stroke();
+
+      connection.accepts.forEach((incoming, signs) {
+        final lights =
+            signs.where((sign) => sign is Stoplight).toList(growable: false);
+
+        lights.forEach((stoplight) =>
+            stoplight.canDriveBy.first.then((canDriveBy) {
+              context.beginPath();
+              context.arc(incoming.end.x, incoming.end.y, 4, 0, 2 * math.pi);
+              context.fillStyle =
+                  canDriveBy ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 0, 0, 0.5)';
+              context.fill();
+              context.lineWidth = 1;
+              context.strokeStyle = 'black';
+              context.stroke();
+            }));
+      });
     });
 
     snapshot.forEach((actor, point) {
