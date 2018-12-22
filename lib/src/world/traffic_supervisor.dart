@@ -65,10 +65,11 @@ class TrafficSupervisor {
         .expand((spawners) => spawners)
         .flatMap((spawner) => spawner.next);
     final onPosition = (Actor actor) => actor
-        .sampledPosition(sampler)
-        .exhaustMap(toConnectionPoint(actor))
-        .exhaustMap(maybeSwitchConnection(actor))
-        .map(toMappedActor(actor))
+        .sampledPosition(sampler) // move forward in time
+        .exhaustMap(toConnectionPoint(actor)) // get the position
+        .exhaustMap(
+            maybeSwitchConnection(actor)) // maybe switch to another vector
+        .map(toMappedActor(actor)) // actor, position value-pair
         .takeUntil(actor.onDestroy.stream);
     final onDestroy = (Actor actor) => actor.onDestroy.stream
         .take(1)

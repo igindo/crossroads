@@ -191,8 +191,10 @@ class Actor extends Object with ReactiveMixin {
               ? endPoint.y - startPoint.y
               : obstruction.y - point.y;
 
-      onLinearModifiers
-          .add([Vector(dx, dy, Duration(milliseconds: _normal_speed))]);
+      onLinearModifiers.add([
+        Vector(dx, dy, Duration(milliseconds: _normal_speed),
+            easing: Easing.sine)
+      ]);
     }
 
     void applyNormal() {
