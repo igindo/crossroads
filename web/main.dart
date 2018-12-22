@@ -102,6 +102,15 @@ void main() {
 
     context.clearRect(0, 0, 800, 665);
 
+    network.connections.forEach((connection) {
+      context.beginPath();
+      context.moveTo(connection.start.x, connection.start.y);
+      context.lineTo(connection.end.x, connection.end.y);
+      context.closePath();
+      context.strokeStyle = connection.congestionStateSync.isCongested ? 'red' : 'black';
+      context.stroke();
+    });
+
     snapshot.forEach((actor, point) {
       colorPoints.add(actor.end);
 

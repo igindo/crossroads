@@ -44,9 +44,11 @@ class TrafficSupervisor {
       if (isDeletion) {
         transformed.remove(mappedActor.actor);
       } else {
-        final isCongested =
-            mappedActor.cp.connection.start.distanceTo(mappedActor.cp.point) <
-                10;
+        final dy = mappedActor.cp.connection.totalDistance();
+        final d =
+            mappedActor.cp.connection.start.distanceTo(mappedActor.cp.point);
+        final isCongested = dy > 10 && d < 10;
+
         transformed[mappedActor.actor] = mappedActor.cp.point;
 
         mappedActor.cp.connection.onCongested.add(isCongested

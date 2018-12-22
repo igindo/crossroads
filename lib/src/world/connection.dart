@@ -13,6 +13,9 @@ class Connection {
   final BehaviorSubject<CongestionState> _onCongested =
       BehaviorSubject<CongestionState>(
           seedValue: const CongestionState(null, false));
+  double _totalDistance;
+
+  CongestionState get congestionStateSync => _onCongested.value;
 
   Sink<CongestionState> get onCongested => _onCongested.sink;
 
@@ -37,7 +40,7 @@ class Connection {
     return ceiled == end || start.distanceTo(ceiled) > totalDistance();
   }
 
-  double totalDistance() => start.distanceTo(end);
+  double totalDistance() => _totalDistance ??= start.distanceTo(end);
 }
 
 class CongestionState {
