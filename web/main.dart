@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:crossroads/crossroads.dart';
 
-import '../example/mortsel.dart';
+import 'package:crossroads/setups/mortsel.dart';
 
 void main() {
   final CanvasElement canvas = querySelector('#canvas');

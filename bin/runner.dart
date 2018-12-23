@@ -1,4 +1,4 @@
-import '../example/mortsel.dart';
+import 'package:crossroads/setups/mortsel.dart';
 
 void main() {
   supervisor.snapshot.throttle(const Duration(seconds: 1)).listen((snapshot) {
