@@ -13,8 +13,7 @@ class TrafficSupervisor {
       BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
   final StreamController<List<ActorSpawner>> _onSpawners =
       StreamController<List<ActorSpawner>>();
-  final Stream<void> sampler =
-      Stream.periodic(const Duration(milliseconds: 60)).asBroadcastStream();
+  final Stream<void> sampler;
   Map<Connection, CongestionState> activeCongestion =
       <Connection, CongestionState>{};
 
@@ -22,7 +21,7 @@ class TrafficSupervisor {
 
   Observable<Map<Actor, Point>> get snapshot => _onSnapshot.stream;
 
-  TrafficSupervisor() {
+  TrafficSupervisor(this.sampler) {
     _init();
   }
 
