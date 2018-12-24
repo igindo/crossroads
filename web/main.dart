@@ -11,7 +11,9 @@ void main() {
   const colors = ['red', 'green', 'blue', 'purple', 'pink'];
   final colorPoints = Set<Point>();
 
-  supervisor.snapshot.listen((snapshot) {
+  supervisor.snapshot
+      .throttle(const Duration(milliseconds: 30))
+      .listen((snapshot) {
     final CanvasRenderingContext2D context = canvas.getContext('2d');
 
     context.clearRect(0, 0, 800, 665);

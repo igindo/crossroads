@@ -4,12 +4,10 @@ import 'package:crossroads/src/world/actor.dart';
 import 'package:crossroads/src/world/point.dart';
 import 'package:crossroads/src/world/traffic_sign.dart';
 
-enum Speed { freeway, divided, undivided, residential }
-
 class Connection {
   final Point start, end;
   final Map<Connection, List<TrafficSign>> accepts;
-  final Speed speed;
+  final int speed;
   final BehaviorSubject<CongestionState> _onCongested =
       BehaviorSubject<CongestionState>(seedValue: const CongestionState.none());
   double _totalDistance;
@@ -68,4 +66,11 @@ class CongestionState {
         congestion ? true : (sameCongestion ? false : isCongested),
         leaving ? true : (sameLeaving ? false : isActorLeaving));
   }
+}
+
+class Speed {
+  static const freeway = 2500,
+      divided = 4000,
+      undivided = 5000,
+      residential = 7000;
 }

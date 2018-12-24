@@ -14,7 +14,7 @@ class Actor extends Object with ReactiveMixin {
       BehaviorSubject<Connection>();
   final BehaviorSubject<Map<Actor, Point>> _onSnapshot =
       BehaviorSubject<Map<Actor, Point>>(seedValue: const <Actor, Point>{});
-  final int _normal_speed = 4000;
+  final int ident;
 
   Observable<Connection> get connection => _onConnection.stream;
 
@@ -41,31 +41,25 @@ class Actor extends Object with ReactiveMixin {
     return null;
   }
 
-  Actor(this.path, this.start, this.end) {
-    path.first.congested
-        .where((state) => !state.isCongested)
-        .first
-        .whenComplete(() {
-      nextConnection(start);
+  Actor(this.path, this.start, this.end)
+      : ident = math.Random().nextInt(0xffffff);
 
-      final localize = (Map<Actor, Point> snapshot) {
-        final localMap = <Actor, Point>{};
+  Future<CongestionState> init() => path.first.congested
+      .where((state) => !state.isCongested)
+      .first
+      .whenComplete(_beginPath);
 
-        snapshot.forEach((actor, point) {
-          if (!actor.isDestroyed &&
-              actor._onConnection.value == _onConnection.value) {
-            localMap[actor] = point;
-          }
-        });
+  void _beginPath() {
+    nextConnection(start);
 
-        return localMap;
-      };
+    final localize = (Map<Actor, Point> snapshot) =>
+        Map<Actor, Point>.from(snapshot)
+          ..removeWhere((actor, point) =>
+              actor.isDestroyed ||
+              actor._onConnection.value != _onConnection.value);
 
-      _onSnapshotSubscription = _onSnapshot.stream
-          .map(localize)
-          .asyncMap(_maybeSlowDown)
-          .listen(null);
-    });
+    _onSnapshotSubscription =
+        _onSnapshot.stream.map(localize).asyncMap(_maybeSlowDown).listen(null);
   }
 
   void _destroy() {
@@ -102,7 +96,8 @@ class Actor extends Object with ReactiveMixin {
           exitPoint.y - entryPoint.y,
           Duration(
               milliseconds:
-                  (_normal_speed * connection.totalDistance() / 100).floor()))
+                  (connection.speed * connection.totalDistance() / 100)
+                      .floor()))
     ]);
 
     _onConnection.add(connection);
@@ -195,7 +190,7 @@ class Actor extends Object with ReactiveMixin {
               : obstruction.y - point.y;
 
       onLinearModifiers.add([
-        Vector(dx, dy, Duration(milliseconds: _normal_speed),
+        Vector(dx, dy, Duration(milliseconds: connection.speed),
             easing: Easing.sine)
       ]);
     }
@@ -209,13 +204,14 @@ class Actor extends Object with ReactiveMixin {
             endPoint.y - startPoint.y,
             Duration(
                 milliseconds:
-                    (_normal_speed * connection.totalDistance() / 100).floor()))
+                    (connection.speed * connection.totalDistance() / 100)
+                        .floor()))
       ]);
     }
 
     if (obstruction != null) {
       if (dist < 60) {
-        if (dist < math.Random(hashCode).nextInt(5) + 12) {
+        if (dist < math.Random(ident).nextInt(5) + 12) {
           applyStop();
         } else {
           applyDeceleration();

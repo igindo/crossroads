@@ -17,8 +17,10 @@ class ActorSpawner {
   final List<ResolvedConnection> resolvedConnections = <ResolvedConnection>[];
 
   Observable<Actor> _next;
-  Observable<Actor> get next => _next ??=
-      Observable(randInterval()).takeUntil(_onClose.stream).map(nextActor);
+  Observable<Actor> get next => _next ??= Observable(randInterval())
+      .takeUntil(_onClose.stream)
+      .map(nextActor)
+      .asyncMap((actor) => actor.init().then((_) => actor));
 
   ActorSpawner(this.network, this.entryPoint, this.exitPoints);
 
@@ -26,9 +28,7 @@ class ActorSpawner {
     final random = new math.Random();
     final exitPoint = exitPoints[random.nextInt(exitPoints.length)];
     final resolvedConnection = resolvedConnections.firstWhere(
-        (res) =>
-            res.entryPoint == entryPoint &&
-            res.exitPoint == exitPoint,
+        (res) => res.entryPoint == entryPoint && res.exitPoint == exitPoint,
         orElse: () => ResolvedConnection(entryPoint, exitPoint,
             resolveConnection(network, entryPoint, exitPoint)));
 

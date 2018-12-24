@@ -83,7 +83,9 @@ class TrafficSupervisor {
     final handleSnapshot = (Tuple2<Actor, Map<Actor, Point>> tuple) {
       _onSnapshot.add(tuple.item2);
 
-      tuple.item1?.onSnapshot?.add(tuple.item2);
+      if (tuple.item1 != null) {
+        tuple.item1.onSnapshot.add(tuple.item2);
+      }
     };
     final onNext = Observable(_onSpawners.stream)
         .expand((spawners) => spawners)
