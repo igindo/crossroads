@@ -101,6 +101,8 @@ class Actor extends Object with ReactiveMixin {
     ]);
 
     _onConnection.add(connection);
+
+    notifyNow();
   }
 
   Future<bool> _canSwitchConnection(Point entryPoint, bool test(bool value)) {

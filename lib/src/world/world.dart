@@ -8,3 +8,4 @@ export 'package:crossroads/src/world/path_finder.dart';
 export 'package:crossroads/src/world/point.dart';
 export 'package:crossroads/src/world/traffic_sign.dart';
 export 'package:crossroads/src/world/traffic_supervisor.dart';
+export 'package:crossroads/src/world/vector.dart';

@@ -58,6 +58,8 @@ class GivePriority implements TrafficSign {
                 values.fold(true, (prev, curr) => prev && !curr.isActorLeaving))
         : priorityConnections.first.congested.map((cs) => !cs.isActorLeaving);
 
-    stream.debounce(const Duration(milliseconds: 20)).listen(_onCanDriveBy.add);
+    stream
+        .debounce(const Duration(milliseconds: 120))
+        .listen(_onCanDriveBy.add);
   }
 }

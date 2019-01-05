@@ -5,8 +5,8 @@ import 'package:crossroads/src/world/connection.dart';
 import 'package:crossroads/src/world/network.dart';
 import 'package:crossroads/src/world/point.dart';
 
-List<Connection> resolveConnection(final Network network, final Point start,
-    final Point end) {
+List<Connection> resolveConnection(
+    final Network network, final Point start, final Point end) {
   final points = _resolvePoints(network, start, end);
 
   List<Connection> toConnections(final List<Point> points) {
@@ -35,16 +35,12 @@ List<Connection> resolveConnection(final Network network, final Point start,
   return toConnections(points);
 }
 
-List<Point> _resolvePoints(final Network network, final Point start,
-    final Point end) {
+List<Point> _resolvePoints(
+    final Network network, final Point start, final Point end) {
   final calculations = <Point, _Calc>{};
   final open = <Point>[], closed = <Point>[];
 
-  double heuristic(final Point curr, final Point goal) {
-    var x = curr.x - goal.x, y = curr.y - goal.y;
-
-    return sqrt(x * x + y * y);
-  }
+  double heuristic(final Point curr, final Point goal) => curr.distanceTo(goal);
 
   open.add(start);
 

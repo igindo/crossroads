@@ -9,6 +9,8 @@ import 'package:crossroads/src/world/vector.dart';
 
 abstract class ReactiveMixin {
   StreamController<Vector> _onVector = new StreamController<Vector>();
+  StreamController<bool> _onImmediateEvent =
+      new StreamController<bool>(sync: true);
   BehaviorSubject<Iterable<Vector>> _onLinearModifiers =
       new BehaviorSubject<Iterable<Vector>>(seedValue: const []);
   BehaviorSubject<Iterable<Timestamped<Vector>>> _onVectorTimes =
@@ -26,6 +28,8 @@ abstract class ReactiveMixin {
 
   void setPoint(Point value) => _p1 = value;
 
+  void notifyNow() => _onImmediateEvent.add(true);
+
   void cleanUp() {
     onDestroy.add(true);
 
@@ -33,6 +37,7 @@ abstract class ReactiveMixin {
     _positionSubscription?.cancel();
 
     _onVector.close();
+    _onImmediateEvent.close();
     _onVectorTimes.close();
     _onLinearModifiers.close();
     onDestroy.close();
@@ -51,23 +56,24 @@ abstract class ReactiveMixin {
         .timestamp()
         .bufferCount(2, 1)
         .map(_pairTimeDeltaMs)
-        .switchMap((durationMs) =>
-            _onLinearModifiers.take(1).map((list) => Tuple2(durationMs, list)))
-        .map((tuple) => _p1.add(tuple.item2.fold(
+        .map((durationMs) => _p1.add(_onLinearModifiers.value.fold(
             _p0,
             (Point prev, Vector current) =>
-                prev.add(_applyEasing(tuple.item1, current)))))
+                prev.add(_applyEasing(durationMs, current)))))
         .listen(setPoint);
 
-    return _onVectorTimes
-        .sample(sampler)
-        .takeUntil(onDestroy.stream)
-        .map(_splitTimeFrame())
-        .doOnData((tuple) => setPoint(_p1.add(tuple.item2)))
-        .map((tuple) => tuple.item1)
-        .doOnData(_onVectorTimes.add)
-        .map((vectorTimes) => vectorTimes.fold(_p1, _acc))
-        .map((point) => point.normalize());
+    return Observable.merge([
+      _onVectorTimes
+          .sample(sampler)
+          .takeUntil(onDestroy.stream)
+          .map(_splitTimeFrame())
+          .doOnData((tuple) => setPoint(_p1.add(tuple.item2)))
+          .map((tuple) => tuple.item1)
+          .doOnData(_onVectorTimes.add)
+          .map((vectorTimes) => vectorTimes.fold(_p1, _acc))
+          .map((point) => point.normalize()),
+      _onImmediateEvent.stream.map((_) => _p1.normalize())
+    ]);
   }
 
   Point _linear(int durationMs, Vector vector) =>

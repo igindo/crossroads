@@ -40,6 +40,13 @@ class Connection {
   }
 
   double totalDistance() => _totalDistance ??= start.distanceTo(end);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Connection && this.start == other.start && this.end == other.end;
+
+  @override
+  int get hashCode => '${start.x},${start.y}:${end.x},${end.y}'.hashCode;
 }
 
 class CongestionState {
