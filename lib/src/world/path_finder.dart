@@ -40,7 +40,8 @@ List<Point> _resolvePoints(
   final calculations = <Point, _Calc>{};
   final open = <Point>[], closed = <Point>[];
 
-  double heuristic(final Point curr, final Point goal) => curr.distanceTo(goal);
+  double heuristic(final Point curr, final Point goal) =>
+      curr.distanceTo(goal) / goal.distanceTo(const Point(0, 0));
 
   open.add(start);
 
@@ -116,9 +117,7 @@ List<Point> _resolvePoints(
 
         toCalc.parentIndex = closed.length - 1;
 
-        toCalc.g = currCalc.g +
-            sqrt(pow(pointTo.x - currentPoint.x, 2) +
-                pow(pointTo.y - currentPoint.y, 2));
+        toCalc.g = currCalc.g + heuristic(currentPoint, pointTo);
         toCalc.h = heuristic(pointTo, end);
         toCalc.f = toCalc.g + toCalc.h;
 
